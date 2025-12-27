@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package RPC;
+
+message RpcHeader
+{
+    // 1. 基本路由信息 (改为 string 更符合语义)
+    string service_name = 1;
+    string method_name = 2;
+
+    // 2. 业务参数长度 (保持不变)
+    uint32 args_size = 3;
+
+    // 3. 关键：请求 ID，用于异步回调和请求匹配
+    uint64 request_id = 4;
+
+
+    // 4. 错误处理 (用于响应包)
+    // 0 表示成功，非 0 表示框架层错误 (如服务未找到、反序列化失败)
+    int32 error_code = 5; 
+    string error_msg = 6;
+
+    // 5. (可选) 扩展元数据，用于鉴权、TraceID 等
+    // map<string, string> meta_data = 7;
+}
