@@ -171,14 +171,13 @@ std::string ZkClient::GetStateString() const {
   if (!zk_handle_) return "UNINITIALIZED";
   
   int state = zoo_state(zk_handle_);
-  switch (state) {
-    case ZOO_EXPIRED_SESSION_STATE: return "EXPIRED";
-    case ZOO_AUTH_FAILED_STATE:     return "AUTH_FAILED";
-    case ZOO_CONNECTING_STATE:      return "CONNECTING";
-    case ZOO_ASSOCIATING_STATE:     return "ASSOCIATING";
-    case ZOO_CONNECTED_STATE:       return "CONNECTED";
-    default:                        return "UNKNOWN";
-  }
+  if (state == ZOO_EXPIRED_SESSION_STATE) return "EXPIRED";
+  if (state == ZOO_AUTH_FAILED_STATE)     return "AUTH_FAILED";
+  if (state == ZOO_CONNECTING_STATE)      return "CONNECTING";
+  if (state == ZOO_ASSOCIATING_STATE)     return "ASSOCIATING";
+  if (state == ZOO_CONNECTED_STATE)       return "CONNECTED";
+    
+  return "UNKNOWN";
 }
 
 // ============================================================================
@@ -218,7 +217,12 @@ bool ZkClient::Create(const std::string& path,
 
   // 3. 创建节点
   char path_buffer[512];
-  int flags = static_cast<int>(node_type);
+  int flags = 0;
+  if (node_type == ZkNodeType::EPHEMERAL) {
+      flags = ZOO_EPHEMERAL; // ZOO_EPHEMERAL 是变量，运行时赋值没问题
+  } else if (node_type == ZkNodeType::SEQUENCE) {
+      flags = ZOO_SEQUENCE;
+  }
   
   int ret = zoo_create(
       zk_handle_,
@@ -451,7 +455,7 @@ bool ZkClient::RegisterService(const std::string& service_name,
 }
 
 /**
- * @brief 注销 RPC 服务
+ * @brief 注销 RPC 服务（=只删除一个临时节点，不能把整个服务都删了）
  * @param service_name 服务名称
  * @param service_addr 服务地址
  * @return true 成功, false 失败
@@ -497,7 +501,7 @@ bool ZkClient::WatchService(const std::string& service_name, ZkWatchCallback cal
   // 注册 Watch 回调
   SetWatcher(service_path, callback);
   
-  // 获取子节点列表并设置 Watch
+  // 获取子节点列表并设置 Watch = true 监听所有子节点的变化
   std::vector<std::string> children;
   return GetChildren(service_path, children, true);
 }

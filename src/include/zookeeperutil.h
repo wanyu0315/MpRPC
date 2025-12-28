@@ -51,9 +51,9 @@ struct ZkConfig {
  * @brief ZooKeeper 节点类型枚举
  */
 enum class ZkNodeType {
-  PERSISTENT = 0,           // 持久节点（默认）
-  EPHEMERAL = ZOO_EPHEMERAL,// 临时节点（会话结束自动删除）
-  SEQUENCE = ZOO_SEQUENCE   // 顺序节点（节点名后自动追加序号）
+  PERSISTENT,           // 持久节点（默认）
+  EPHEMERAL, // 临时节点（会话结束自动删除）
+  SEQUENCE  // 顺序节点（节点名后自动追加序号）
 };
 
 // ============================================================================
