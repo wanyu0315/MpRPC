@@ -1,4 +1,6 @@
 #include "rpcprovider.h"
+#include "mprpcapplication.h" 
+#include "zookeeperutil.h"    
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -180,6 +182,9 @@ void RpcProvider::Run() {
     ip = GetLocalIP(); // 自动获取本机 IP
   }
 
+  // 更新配置中的 IP，确保注册到 ZK 的是真实 IP
+  config_.ip = ip;
+
   muduo::net::InetAddress address(ip, config_.port);
   
   // 创建了一个 Muduo 的 TcpServer 对象，并把它存入 server_ 中
@@ -210,6 +215,40 @@ void RpcProvider::Run() {
            << " with " << config_.thread_num << " threads";
 
   server_->start();   // 此时端口才真正打开，可以接收 TCP 握手
+
+  //========================================================
+  //连接 ZK 并注册服务
+  //========================================================
+  ZkConfig zk_conf;    // ZKClient 配置结构体，用于初始化ZkClient单例
+  zk_conf.host = MprpcApplication::GetInstance().GetConfig().Load("zookeeper_ip");  // 从配置文件获取 ZK 服务器地址
+  zk_conf.host += ":" + MprpcApplication::GetInstance().GetConfig().Load("zookeeper_port");  // 追加端口
+  zk_conf.session_timeout_ms = 30000;
+  zk_conf.root_path = "/mprpc"; // Zk 服务端的默认rpc根路径 
+
+  // 启动 rpc 服务端的 zk 客户端单例
+  ZkClient& zk_cli = ZkClient::GetInstance();
+  zk_cli.Init(zk_conf);
+  
+  if (zk_cli.Start()) {
+      // 遍历所有已加载的 Service，注册到 ZK
+      // 路径格式: /mprpc/ServiceName/ip:port
+      for (auto& sp : service_map_) {
+          std::string service_name = sp.first;
+          std::string service_path = service_name;
+          std::string service_addr = ip + ":" + std::to_string(config_.port); // rpc服务端IP:Port = 办理服务的IP:Port
+          
+          // 注册服务（创建临时节点）
+          if (zk_cli.RegisterService(service_name, service_addr)) { // 此函数最终创建出/mprpc/ServiceName/ip:port临时节点
+              LOG_INFO << "Successfully registered service to ZK: " << service_name 
+                        << " -> " << service_addr;
+          } else {
+              LOG_ERROR << "Failed to register service to ZK: " << service_name;
+          }
+      }
+  } else {
+      LOG_ERROR << "Failed to start ZkClient, services will not be discoverable!";
+  }
+
   event_loop_.loop(); // 进入事件循环，阻塞在此，通过 `epoll_wait` 等待网络事件发生
 }
 

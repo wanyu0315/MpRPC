@@ -164,8 +164,8 @@ private:
     std::unique_ptr<ConnectionPool> conn_pool_;
 
     std::atomic<uint64_t> next_request_id_{1};
-    std::mutex pending_mutex_;
-    std::unordered_map<uint64_t, std::shared_ptr<PendingRpcContext>> pending_requests_;
+    static std::mutex pending_mutex_;
+    static std::unordered_map<uint64_t, std::shared_ptr<PendingRpcContext>> pending_requests_;
 
     std::thread timeout_checker_thread_;
     std::atomic<bool> stop_timeout_checker_{false};
@@ -175,7 +175,7 @@ private:
     void RegisterPendingRequest(uint64_t request_id, 
                                 std::shared_ptr<PendingRpcContext> ctx);
     
-    void OnResponseReceived(uint64_t request_id, int32_t error_code,
+    static void OnResponseReceived(uint64_t request_id, int32_t error_code,
                             const std::string& error_msg,
                             const std::string& response_data);
     
