@@ -561,17 +561,53 @@ MprpcChannel::MprpcChannel(const std::string& ip, uint16_t port,
     // 3. 启动超时检查后台线程
     stop_timeout_checker_ = false;
     timeout_checker_thread_ = std::thread([this]() { TimeoutCheckerLoop(); });
+
+    // =======================================================================
+    // 注册优雅关闭钩子 Hook
+    // =======================================================================
+    // 防止程序被 kill 时，析构函数没执行，导致线程没 join
+    shutdown_hook_id_ = MprpcApplication::GetInstance().RegisterShutdownHook([this]() {
+        std::cout << "[MprpcChannel] Shutdown hook triggered." << std::endl;
+        this->Shutdown(); // 调用提取出来的 Shutdown 方法
+    });
 }
 
 MprpcChannel::~MprpcChannel() {
-    // 停止超时检查线程
-    stop_timeout_checker_ = true;
-    if (timeout_checker_thread_.joinable()) {
-        timeout_checker_thread_.join();
+    // 注销钩子 & 执行关闭
+    // 如果对象是正常析构的，必须把钩子摘掉，否则 App 退出时会回调野指针
+    if (shutdown_hook_id_ >= 0) {
+        MprpcApplication::GetInstance().UnregisterShutdownHook(shutdown_hook_id_);
     }
+    
+    Shutdown(); // 复用关闭逻辑
 
     // 注意：g_conn_pools 是全局的，这里不清除，以便其他 Channel 复用连接
     // 如果需要清理，可以在程序退出时统一清理
+}
+
+/**
+* @brief 优雅关闭
+* 停止超时检查线程，停止所有连接池的线程
+*/
+void MprpcChannel::Shutdown() {
+    // 1. 停止超时检查线程
+    if (!stop_timeout_checker_) { // 简单的状态检查，防止重复 join
+        stop_timeout_checker_ = true;
+        if (timeout_checker_thread_.joinable()) {
+            timeout_checker_thread_.join();
+        }
+    }
+
+    // 2. 停止所有连接池的线程
+    // 注意：g_conn_pools 是全局的，通常由程序退出时统一清理。
+    // 但如果是直连模式的 conn_pool_ (unique_ptr)，它会随着 MprpcChannel 析构自动释放
+    // ConnectionPool 的析构函数里已经调用了 StopReceiveThread。
+    // 所以这里主要处理属于自己的线程资源。
+    
+    if (conn_pool_) {
+        // 显式停止，虽然 unique_ptr 析构也会做，但这样更安全
+        // conn_pool_.reset(); // 或者什么都不做，依赖析构
+    }
 }
 
 /**

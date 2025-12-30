@@ -72,6 +72,10 @@ RpcProvider::RpcProvider(const Config& config)
 }
 
 RpcProvider::~RpcProvider() {
+  // 取消注册 Hook（防止野指针）
+  if (shutdown_hook_id_ != -1) { // 意味着 Hook 成功注册了。
+    MprpcApplication::GetInstance().UnregisterShutdownHook(shutdown_hook_id_);
+  }
   Shutdown(); // 析构时确保资源释放
 }
 
@@ -107,6 +111,42 @@ void RpcProvider::Shutdown() {
 
   LOG_INFO << "RpcProvider shutting down...";
 
+  // -----------------------------------------------------------------------
+  // 第一步：ZK 下线 (通知客户端)
+  // -----------------------------------------------------------------------
+  // 必须最先做！断开 ZK Session，临时节点立即消失。
+  // 客户端监听到节点消失，就不会再向本节点发新请求了。
+  LOG_INFO << "[Shutdown Step 1] Unregistering from Zookeeper...";
+  ZkClient::GetInstance().Stop();
+
+  // -----------------------------------------------------------------------
+  // 第二步：等待正在进行的请求处理完毕
+  // -----------------------------------------------------------------------
+  // 这是一个策略选择。
+  // 简单做法：设置一个标志位，让正在运行的 HandleRpcRequest 知道要停了
+  // 进阶做法：等待 pending_requests 归零 (需加超时机制，防止死等)
+    
+  LOG_INFO << "[Shutdown Step 2] Waiting for pending requests...";
+  
+  // 简单倒计时等待（例如最多等 3 秒）
+  int retries = 0;
+  while (metrics_.pending_requests > 0 && retries < 30) {
+      usleep(100000); // 睡 100ms
+      retries++;
+      if (retries % 10 == 0) {
+          LOG_INFO << "Waiting for " << metrics_.pending_requests << " pending requests...";
+      }
+  }
+  
+  if (metrics_.pending_requests > 0) {
+      LOG_WARN << "Timeout! Forcing shutdown with " << metrics_.pending_requests << " active requests.";
+  } else {
+      LOG_INFO << "All requests finished.";
+  }
+
+  // -----------------------------------------------------------------------
+  // 第三步：断开所有连接
+  // -----------------------------------------------------------------------
   {
     std::lock_guard<std::mutex> lock(conn_mutex_);
     for (auto& pair : connections_) {
@@ -118,7 +158,7 @@ void RpcProvider::Shutdown() {
     connections_.clear();
   }
 
-  // 退出 EventLoop
+  // 最后退出 EventLoop
   if (event_loop_.eventHandling()) {
     event_loop_.quit();
   }
@@ -214,6 +254,15 @@ void RpcProvider::Run() {
   LOG_INFO << "RpcProvider starting at " << ip << ":" << config_.port
            << " with " << config_.thread_num << " threads";
 
+  // 注册到 MprpcApplication 的生命周期管理
+  int hook_id = MprpcApplication::GetInstance().RegisterShutdownHook([this]() {
+    LOG_INFO << "MprpcApplication triggered shutdown, stopping RpcProvider...";
+    this->Shutdown();  // 当收到信号时，自动调用 Shutdown
+  });
+
+  // 保存 hook_id，以便析构时取消注册（可选）
+  shutdown_hook_id_ = hook_id;
+  
   server_->start();   // 此时端口才真正打开，可以接收 TCP 握手
 
   //========================================================
@@ -249,6 +298,7 @@ void RpcProvider::Run() {
       LOG_ERROR << "Failed to start ZkClient, services will not be discoverable!";
   }
 
+  LOG_INFO << "RpcProvider enter event loop...";
   event_loop_.loop(); // 进入事件循环，阻塞在此，通过 `epoll_wait` 等待网络事件发生
 }
 
@@ -322,6 +372,9 @@ void RpcProvider::OnMessage(const muduo::net::TcpConnectionPtr& conn,
 
     // 3. 完整包解析成功，开始业务处理
     metrics_.total_requests++;
+
+    // 正在处理的请求计数 +1
+    metrics_.pending_requests++;
     
     try {
       HandleRpcRequest(conn, service_name, method_name, args_str);
@@ -524,6 +577,8 @@ void RpcProvider::SendRpcResponse(muduo::net::TcpConnectionPtr conn,
   frame.append(response_str); // 追加数据data部分
 
   conn->send(frame); // 发送的是frame
+
+  metrics_.pending_requests--; // 响应发送完毕，正在处理的请求结束，计数 -1
   LOG_DEBUG << "Response sent: " << response_str.size() << " bytes";
 }
 
@@ -546,6 +601,9 @@ void RpcProvider::SendErrorResponse(const muduo::net::TcpConnectionPtr& conn,
   frame.append(error_str);
   
   conn->send(frame);
+
+  // 错误响应发送完毕，请求结束，计数 -1
+  metrics_.pending_requests--;
   LOG_WARN << "Error response: code=" << error_code << ", msg=" << error_msg;
 }
 

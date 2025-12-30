@@ -143,6 +143,12 @@ public:
                  const RpcClientConfig& config = RpcClientConfig());
     ~MprpcChannel();
 
+    /**
+    * @brief 优雅关闭
+    * 停止超时检查线程，停止所有连接池的线程
+    */
+    void Shutdown();
+
     // 禁用拷贝
     MprpcChannel(const MprpcChannel&) = delete;
     MprpcChannel& operator=(const MprpcChannel&) = delete;
@@ -162,6 +168,8 @@ private:
     RpcClientConfig config_;
 
     std::unique_ptr<ConnectionPool> conn_pool_;
+
+    int shutdown_hook_id_{-1}; // 优雅关闭钩子 ID
 
     std::atomic<uint64_t> next_request_id_{1};
     static std::mutex pending_mutex_;
