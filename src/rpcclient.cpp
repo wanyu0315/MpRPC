@@ -102,7 +102,8 @@ bool RpcConnection::Connect() {
     // 1. 创建 socket（创建的是一个socket描述符）
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd == -1) {
-        std::cerr << "[Conn-" << id_ << "] socket() failed: " << strerror(errno) << std::endl;
+        LOG_ERROR("[Conn-{}] socket() failed: {}", id_, strerror(errno));
+        // std::cerr << "[Conn-" << id_ << "] socket() failed: " << strerror(errno) << std::endl;
         return false;
     }
 
@@ -121,7 +122,9 @@ bool RpcConnection::Connect() {
     
     // 非阻塞 connect 会立即返回 -1，errno 为 EINPROGRESS
     if (ret == -1 && errno != EINPROGRESS) {
-        std::cerr << "[Conn-" << id_ << "] connect() failed: " << strerror(errno) << std::endl;
+
+        LOG_ERROR("[Conn-{}] connect() failed: {}", id_, strerror(errno));
+        // std::cerr << "[Conn-" << id_ << "] connect() failed: " << strerror(errno) << std::endl;
         close(client_fd);
         return false;
     }
@@ -141,7 +144,8 @@ bool RpcConnection::Connect() {
         ret = select(client_fd + 1, nullptr, &write_fds, nullptr, &timeout);
 
         if (ret <= 0) {
-            std::cerr << "[Conn-" << id_ << "] connect timeout/error" << std::endl;
+            LOG_ERROR("[Conn-{}] connect timeout/error", id_);
+            // std::cerr << "[Conn-" << id_ << "] connect timeout/error" << std::endl;
             close(client_fd);
             return false;
         }
@@ -150,7 +154,8 @@ bool RpcConnection::Connect() {
         int error = 0;
         socklen_t len = sizeof(error);
         if (getsockopt(client_fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0 || error != 0) {
-            std::cerr << "[Conn-" << id_ << "] connect socket error: " << strerror(error) << std::endl;
+            LOG_ERROR("[Conn-{}] connect socket error: {}", id_, strerror(error));
+            // std::cerr << "[Conn-" << id_ << "] connect socket error: " << strerror(error) << std::endl;
             close(client_fd);
             return false;
         }
@@ -167,7 +172,8 @@ bool RpcConnection::Connect() {
     setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)); // 设置发送超时
 
     fd_ = client_fd;
-    std::cout << "[Conn-" << id_ << "] Connected to " << ip_ << ":" << port_ << std::endl;
+    LOG_INFO("[Conn-{}] Connected to {}:{}", id_, ip_, port_);
+    // std::cout << "[Conn-" << id_ << "] Connected to " << ip_ << ":" << port_ << std::endl;
     return true;
 }
 
@@ -298,7 +304,8 @@ void RpcConnection::ReceiveLoop() {
         // 1. 读取数据 (复用逻辑)
         if (!ReadToBuffer()) {
             if (!stop_recv_thread_) {
-                std::cerr << "[Conn-" << id_ << "] Connection closed/error, waiting for retry..." << std::endl;
+                LOG_ERROR("[Conn-{}] Connection closed/error, waiting for retry...", id_);
+                // std::cerr << "[Conn-" << id_ << "] Connection closed/error, waiting for retry..." << std::endl;
                 Close();
                 // 简单重试等待，防止 CPU 空转
                 std::this_thread::sleep_for(std::chrono::seconds(1)); 
@@ -322,14 +329,16 @@ void RpcConnection::ReceiveLoop() {
             }
             catch (const std::exception& e) {
                 // 捕获标准异常 (如 bad_alloc, runtime_error)
-                std::cerr << "[Conn-" << id_ << "] CRITICAL EXCEPTION in parser: " << e.what() << std::endl;
+                LOG_ERROR("[Conn-{}] CRITICAL EXCEPTION in parser: {}", id_, e.what());
+                // std::cerr << "[Conn-" << id_ << "] CRITICAL EXCEPTION in parser: " << e.what() << std::endl;
                 // 发生异常通常意味着内存错乱或协议严重破坏，必须断开连接
                 Close(); 
                 return; // 直接退出线程，防止死循环或二次崩溃
             }
             catch (...) {
                 // 捕获未知异常
-                std::cerr << "[Conn-" << id_ << "] UNKNOWN EXCEPTION in parser." << std::endl;
+                LOG_ERROR("[Conn-{}] UNKNOWN EXCEPTION in parser.", id_);
+                // std::cerr << "[Conn-" << id_ << "] UNKNOWN EXCEPTION in parser." << std::endl;
                 Close();
                 return;
             }
@@ -344,7 +353,7 @@ void RpcConnection::ReceiveLoop() {
             }
         }
     }
-    std::cout << "[Conn-" << id_ << "] Receive thread exited." << std::endl;
+    LOG_INFO("[Conn-{}] Receive thread exited.", id_);
 }
 
 /**
@@ -369,7 +378,8 @@ bool RpcConnection::ReadToBuffer() {
         } 
         else if (n == 0) {
             // 2. 对端关闭连接 (FIN)
-            std::cerr << "[Conn-" << id_ << "] Connection closed by peer." << std::endl;
+            LOG_ERROR("[Conn-{}] Connection closed by peer.", id_);
+            // std::cerr << "[Conn-" << id_ << "] Connection closed by peer." << std::endl;
             return false; // 返回 false 通知调用者断开连接
         } 
         else {
@@ -382,7 +392,8 @@ bool RpcConnection::ReadToBuffer() {
                 return true; 
             } else {
                 // 3.2 真正的 socket 错误 (如 Connection Reset)
-                std::cerr << "[Conn-" << id_ << "] Recv error: " << strerror(errno) << std::endl;
+                LOG_ERROR("[Conn-{}] Recv error: {}", id_, strerror(errno));
+                // std::cerr << "[Conn-" << id_ << "] Recv error: " << strerror(errno) << std::endl;
                 return false; // 返回 false 通知调用者断开连接
             }
         }
@@ -410,7 +421,7 @@ bool RpcConnection::TryParseResponse(uint64_t& request_id, int32_t& error_code,
 
   // 校验 header 大小（防止恶意大包）
   if (header_size == 0 || header_size > config_.max_message_size) {
-    std::cerr << "[TryParseResponse] Invalid header size: " << header_size << std::endl;
+    LOG_ERROR("[Conn-{}] Invalid header size: {}", id_, header_size);
     // 丢弃损坏的数据
     recv_buffer_.erase(0, varint_size);
     throw std::runtime_error("Invalid response header size");
@@ -430,7 +441,7 @@ bool RpcConnection::TryParseResponse(uint64_t& request_id, int32_t& error_code,
 
   RPC::RpcHeader rpc_header;
   if (!rpc_header.ParseFromString(header_str)) {
-    std::cerr << "[TryParseResponse] Failed to parse RPC header" << std::endl;
+    LOG_ERROR("[Conn-{}] Failed to parse RPC header", id_);
     recv_buffer_.erase(0, offset);
     throw std::runtime_error("Invalid RPC header");
   }
@@ -443,7 +454,7 @@ bool RpcConnection::TryParseResponse(uint64_t& request_id, int32_t& error_code,
 
   // 校验 args_size
   if (args_size > config_.max_message_size) {
-    std::cerr << "[TryParseResponse] Args size too large: " << args_size << std::endl;
+    LOG_ERROR("[Conn-{}] Args size too large: {}", id_, args_size);
     recv_buffer_.erase(0, offset);
     throw std::runtime_error("Response too large");
   }
@@ -493,7 +504,8 @@ bool ConnectionPool::Init() {
     for (int i = 0; i < config_.connection_pool_size; ++i) {
         auto conn = std::make_shared<RpcConnection>(i, ip_, port_, config_);    // 创建N个连接对象实例
         if (!conn->Connect()) {
-            std::cerr << "[ConnPool] Warn: Failed to connect " << i << ", will retry later." << std::endl;
+            LOG_ERROR("[ConnPool] Warn: Failed to connect {}, will retry later.", i);
+            // std::cerr << "[ConnPool] Warn: Failed to connect " << i << ", will retry later." << std::endl;
             // 策略：即使部分连接失败也继续初始化，允许后续重连
         }
         connections_.push_back(conn); // 创建的连接加入连接池（一个 vector 里）
@@ -515,13 +527,12 @@ std::shared_ptr<RpcConnection> ConnectionPool::GetConnection() {
 
 // 打印连接池中每个连接的统计信息
 void ConnectionPool::PrintStats() const {
-    std::cout << "\n========== Connection Pool Stats ==========" << std::endl;
+    LOG_INFO("========== Connection Pool Stats ==========");
     for (const auto& conn : connections_) {
-        std::cout << "Conn-" << conn->GetId() 
-                  << " | Requests: " << conn->GetTotalRequests()
-                  << " | Failed: " << conn->GetFailedRequests() << std::endl;
+        LOG_INFO("Conn-{} | Requests: {} | Failed: {}",
+                 conn->GetId(), conn->GetTotalRequests(), conn->GetFailedRequests());
     }
-    std::cout << "==========================================\n" << std::endl;
+    LOG_INFO("==========================================");
 }
 
 // ============================================================================
@@ -567,6 +578,7 @@ MprpcChannel::MprpcChannel(const std::string& ip, uint16_t port,
     // =======================================================================
     // 防止程序被 kill 时，析构函数没执行，导致线程没 join
     shutdown_hook_id_ = MprpcApplication::GetInstance().RegisterShutdownHook([this]() {
+        LOG_INFO("[MprpcChannel] Shutdown hook triggered.");
         std::cout << "[MprpcChannel] Shutdown hook triggered." << std::endl;
         this->Shutdown(); // 调用提取出来的 Shutdown 方法
     });

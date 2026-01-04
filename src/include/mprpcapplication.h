@@ -37,6 +37,19 @@
 #include <vector>
 #include "mprpcconfig.h"
 
+// 引入 spdlog 头文件
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE // 开启所有级别的编译
+#include <spdlog/spdlog.h>
+
+//  定义方便的日志宏，直接映射到 spdlog 的宏
+// 使用这些宏可以保留文件行号信息，并且是零成本抽象
+#define LOG_TRACE(...) SPDLOG_TRACE(__VA_ARGS__)
+#define LOG_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__)
+#define LOG_INFO(...)  SPDLOG_INFO(__VA_ARGS__)
+#define LOG_WARN(...)  SPDLOG_WARN(__VA_ARGS__)
+#define LOG_ERROR(...) SPDLOG_ERROR(__VA_ARGS__)
+#define LOG_CRITICAL(...) SPDLOG_CRITICAL(__VA_ARGS__)
+
 // ============================================================================
 // 框架启动参数
 // ============================================================================

@@ -12,6 +12,11 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+// spdlog 相关头文件
+#include <spdlog/sinks/stdout_color_sinks.h> // 控制台输出
+#include <spdlog/sinks/basic_file_sink.h>    // 基础文件输出
+#include <spdlog/sinks/rotating_file_sink.h> // 滚动文件输出 (推荐)
+#include <spdlog/async.h>                    // 异步日志支持
 
 // ============================================================================
 // 静态成员变量初始化
@@ -42,6 +47,8 @@ MprpcApplication::~MprpcApplication() {
   if (!s_shutting_down_) {
     Shutdown();
   }
+  // 释放 spdlog 资源
+  spdlog::shutdown();
 }
 
 // ============================================================================
@@ -154,8 +161,10 @@ void MprpcApplication::Init(int argc, char* argv[]) {
   // 7. 注册信号处理器（捕获 Ctrl+C 等信号）
   app.RegisterSignalHandlers();
 
-  std::cout << "[MprpcApplication] Framework initialized successfully!" << std::endl;
-  std::cout << "=================================================" << std::endl;
+  LOG_INFO("Framework initialized successfully!");
+  LOG_INFO("=================================================");
+  // std::cout << "[MprpcApplication] Framework initialized successfully!" << std::endl;
+  // std::cout << "=================================================" << std::endl;
 }
 
 /**
@@ -175,6 +184,7 @@ bool MprpcApplication::IsInitialized() {
  */
 MprpcConfig& MprpcApplication::GetConfig() {
   if (!IsInitialized()) {
+    // 严重错误，日志还没初始化，只能用 cerr
     std::cerr << "[MprpcApplication] Fatal Error: Framework not initialized! "
               << "Call Init() first." << std::endl;
     exit(EXIT_FAILURE);
@@ -208,7 +218,8 @@ int MprpcApplication::RegisterShutdownHook(std::function<void()> hook) {// 传�
   int hook_id = next_hook_id_++;
   shutdown_hooks_.emplace_back(hook_id, hook); // 存入 ID — 函数对象
   
-  std::cout << "[MprpcApplication] Registered shutdown hook #" << hook_id << std::endl;
+  LOG_INFO("Registered shutdown hook #{}", hook_id);
+  // std::cout << "[MprpcApplication] Registered shutdown hook #" << hook_id << std::endl;
   return hook_id;
 }
 
@@ -224,7 +235,8 @@ void MprpcApplication::UnregisterShutdownHook(int hook_id) {
   
   if (it != shutdown_hooks_.end()) {
     shutdown_hooks_.erase(it);
-    std::cout << "[MprpcApplication] Unregistered shutdown hook #" << hook_id << std::endl;
+    LOG_INFO("Unregistered shutdown hook #{}", hook_id);
+    // std::cout << "[MprpcApplication] Unregistered shutdown hook #" << hook_id << std::endl;
   }
 }
 
@@ -244,7 +256,8 @@ void MprpcApplication::Shutdown() {
     return;  // 已经在关闭中
   }
 
-  std::cout << "\n[MprpcApplication] Shutting down gracefully..." << std::endl;
+  LOG_INFO("Shutting down gracefully...");
+  // std::cout << "\n[MprpcApplication] Shutting down gracefully..." << std::endl;
 
   // 逆序调用关闭钩子（类似于栈的 LIFO 顺序）
   {
@@ -253,16 +266,19 @@ void MprpcApplication::Shutdown() {
     // rbegin() -> rend() 表示反向迭代器（从后往前）
     for (auto it = shutdown_hooks_.rbegin(); it != shutdown_hooks_.rend(); ++it) {
       try {
-        std::cout << "[MprpcApplication] Executing shutdown hook #" << it->first << std::endl;
+        LOG_INFO("Executing shutdown hook #{}", it->first);
+        // std::cout << "[MprpcApplication] Executing shutdown hook #" << it->first << std::endl;
         it->second();  // 执行注册进来的函数
       } catch (const std::exception& e) {
-        std::cerr << "[MprpcApplication] Exception in shutdown hook #" << it->first 
-                  << ": " << e.what() << std::endl;
+        LOG_ERROR("Exception in shutdown hook #{}: {}", it->first, e.what());
+        // std::cerr << "[MprpcApplication] Exception in shutdown hook #" << it->first 
+        //           << ": " << e.what() << std::endl;
       }
     }
   }
 
-  std::cout << "[MprpcApplication] Shutdown complete." << std::endl;
+  LOG_INFO("Shutdown complete.");
+  // std::cout << "[MprpcApplication] Shutdown complete." << std::endl;
 }
 
 /**
@@ -314,18 +330,17 @@ void MprpcApplication::PrintHelp() {
  * @brief 打印所有配置项（调试用）
  */
 void MprpcApplication::PrintConfig() const {
-  std::cout << "\n=================================================" << std::endl;
-  std::cout << "  Current Configuration" << std::endl;
-  std::cout << "=================================================" << std::endl;
+  LOG_INFO("=================================================");
+  LOG_INFO(" Current Configuration");
+  LOG_INFO("=================================================");
   
-  // 这里需要 MprpcConfig 提供一个遍历接口
-  // 简化实现：直接打印常用配置
-  std::cout << "RpcServer.ip      = " << config_.Load("RpcServer.ip") << std::endl;
-  std::cout << "RpcServer.port    = " << config_.Load("RpcServer.port") << std::endl;
-  std::cout << "log.level         = " << config_.Load("log.level") << std::endl;
-  std::cout << "log.file          = " << config_.Load("log.file") << std::endl;
+  // spdlog 无法直接打印 config 对象，需要一个个取
+  LOG_INFO("RpcServer.ip      = {}", config_.Load("RpcServer.ip"));
+  LOG_INFO("RpcServer.port    = {}", config_.Load("RpcServer.port"));
+  LOG_INFO("log.level         = {}", config_.Load("log.level"));
+  LOG_INFO("log.file          = {}", config_.Load("log.file"));
   
-  std::cout << "=================================================" << std::endl;
+  LOG_INFO("=================================================");
 }
 
 // ============================================================================
@@ -422,23 +437,73 @@ void MprpcApplication::InitLogging(const std::string& log_file, const std::strin
   std::cout << "  Log File:  " << (log_file.empty() ? "stdout" : log_file) << std::endl;
   std::cout << "  Log Level: " << log_level << std::endl;
 
-  // TODO: 这里可以集成真正的日志库，例如：
-  // spdlog::set_level(spdlog::level::from_str(log_level));
-  // if (!log_file.empty()) {
-  //   auto file_logger = spdlog::rotating_logger_mt("rpc", log_file, 1024*1024*10, 3);
-  //   spdlog::set_default_logger(file_logger);
-  // }
+  // 集成真正的日志库
+  try {
+      // 1. 准备日志接收器 (Sinks)
+      std::vector<spdlog::sink_ptr> sinks;
 
-  // 简化实现：仅打印日志配置
-  if (!log_file.empty()) {
-    // 尝试创建日志文件
-    std::ofstream test_file(log_file, std::ios::app);
-    if (!test_file.is_open()) {
-      std::cerr << "[MprpcApplication] Warning: Failed to open log file: " << log_file << std::endl;
-    } else {
-      test_file.close();
-    }
+      // sink 1: 控制台输出 (带颜色)
+      auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+      console_sink->set_level(spdlog::level::trace); // 控制台始终显示所有信息，或者根据需求调整
+      sinks.push_back(console_sink);
+
+      // sink 2: 文件输出 (如果配置了文件路径)
+      if (!log_file.empty()) {
+          // 使用滚动日志：最大 5MB，保留 3 个文件
+          auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_file, 1024 * 1024 * 5, 3);
+          file_sink->set_level(spdlog::level::trace);
+          sinks.push_back(file_sink);
+      }
+
+      // 2. 创建异步 Logger
+      // 初始化线程池，队列大小 8192，后台线程数 1
+      spdlog::init_thread_pool(8192, 1); 
+      
+      // 创建一个包含上述 sinks 的异步 logger
+      auto logger = std::make_shared<spdlog::async_logger>("mprpc_logger", 
+          sinks.begin(), sinks.end(), 
+          spdlog::thread_pool(), 
+          spdlog::async_overflow_policy::block); // 队列满时阻塞
+
+      // 3. 设置全局 Logger
+      spdlog::set_default_logger(logger);
+
+      // 4. 设置日志级别
+      spdlog::level::level_enum level = spdlog::level::info; // 默认 INFO
+      if (log_level == "TRACE") level = spdlog::level::trace;
+      else if (log_level == "DEBUG") level = spdlog::level::debug;
+      else if (log_level == "INFO") level = spdlog::level::info;
+      else if (log_level == "WARN") level = spdlog::level::warn;
+      else if (log_level == "ERROR") level = spdlog::level::err;
+      else if (log_level == "CRITICAL") level = spdlog::level::critical;
+      
+      spdlog::set_level(level);
+
+      // 5. 设置日志格式
+      // [时间] [线程ID] [级别] 消息内容
+      spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%^%l%$] %v");
+
+      // 6. 遇到错误级别时自动刷新到磁盘 (防止 Crash 时日志丢失)
+      spdlog::flush_on(spdlog::level::err);
+
+      // 打印一条初始化成功日志 (这会通过 spdlog 输出)
+      LOG_INFO("Spdlog initialized successfully! Level: {}", log_level);
+
+  } catch (const spdlog::spdlog_ex& ex) {
+      std::cerr << "[MprpcApplication] Spdlog init failed: " << ex.what() << std::endl;
+      exit(EXIT_FAILURE);
   }
+
+  // // 简化实现：仅打印日志配置
+  // if (!log_file.empty()) {
+  //   // 尝试创建日志文件
+  //   std::ofstream test_file(log_file, std::ios::app);
+  //   if (!test_file.is_open()) {
+  //     std::cerr << "[MprpcApplication] Warning: Failed to open log file: " << log_file << std::endl;
+  //   } else {
+  //     test_file.close();
+  //   }
+  // }
 }
 
 /**
@@ -452,7 +517,8 @@ void MprpcApplication::InitLogging(const std::string& log_file, const std::strin
  * 收到信号后，触发 Shutdown() 优雅关闭
  */
 void MprpcApplication::RegisterSignalHandlers() {
-  std::cout << "[MprpcApplication] Registering signal handlers..." << std::endl;
+  LOG_INFO("Registering signal handlers...");
+  // std::cout << "[MprpcApplication] Registering signal handlers..." << std::endl;
 
   // 设置信号处理函数
     // 这是系统级别的调用，触发后就会执行 SignalHandler 函数
@@ -463,7 +529,8 @@ void MprpcApplication::RegisterSignalHandlers() {
   // 忽略 SIGPIPE（写入已关闭的 socket 时触发）
   signal(SIGPIPE, SIG_IGN);
 
-  std::cout << "[MprpcApplication] Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)" << std::endl;
+  LOG_INFO("Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)");
+  // std::cout << "[MprpcApplication] Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)" << std::endl;
 }
 
 /**

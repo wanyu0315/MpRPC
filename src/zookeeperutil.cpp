@@ -4,6 +4,7 @@
  */
 
 #include "zookeeperutil.h"
+#include "mprpcapplication.h" 
 
 #include <unistd.h>
 #include <algorithm>
@@ -58,10 +59,10 @@ ZkClient& ZkClient::GetInstance() {
 void ZkClient::Init(const ZkConfig& config) {
   config_ = config;
   
-  std::cout << "[ZkClient] Initialized with config:" << std::endl;
-  std::cout << "  Host: " << config_.host << std::endl;
-  std::cout << "  Session Timeout: " << config_.session_timeout_ms << "ms" << std::endl;
-  std::cout << "  Root Path: " << config_.root_path << std::endl;
+  LOG_INFO("[ZkClient] Initialized with config:");
+  LOG_INFO("  Host: {}", config_.host);
+  LOG_INFO("  Session Timeout: {} ms", config_.session_timeout_ms);
+  LOG_INFO("  Root Path: {}", config_.root_path);
 }
 
 /**
@@ -77,16 +78,16 @@ void ZkClient::Init(const ZkConfig& config) {
 bool ZkClient::Start() {
   // 1. 参数校验
   if (config_.host.empty()) {
-    std::cerr << "[ZkClient] Error: Host is empty! Call Init() first." << std::endl;
+    LOG_ERROR("[ZkClient] Host is empty! Call Init() first.");
     return false;
   }
 
   if (zk_handle_ != nullptr) {
-    std::cerr << "[ZkClient] Warning: Already connected!" << std::endl;
+    LOG_ERROR("[ZkClient] Already connected!");
     return true;
   }
 
-  std::cout << "[ZkClient] Connecting to ZooKeeper: " << config_.host << std::endl;
+  LOG_INFO("[ZkClient] Connecting to ZooKeeper: {}", config_.host);
 
   // 2. 初始化 ZooKeeper 客户端
   // 调用原生 C API
@@ -101,7 +102,7 @@ bool ZkClient::Start() {
   );
 
   if (zk_handle_ == nullptr) {
-    std::cerr << "[ZkClient] Error: zookeeper_init failed!" << std::endl;
+    LOG_ERROR("[ZkClient] zookeeper_init failed!");
     return false;
   }
 
@@ -114,7 +115,7 @@ bool ZkClient::Start() {
   );
 
   if (connected) {
-    std::cout << "[ZkClient] Connected successfully!" << std::endl;
+    LOG_INFO("[ZkClient] Connected successfully!");
     
     // 4. 创建rpc服务根路径（如果不存在）
     if (!config_.root_path.empty() && config_.root_path != "/") {
@@ -122,11 +123,11 @@ bool ZkClient::Start() {
     }
     return true;
   } else {
-    std::cerr << "[ZkClient] Connection timeout!" << std::endl;
+    LOG_ERROR("[ZkClient] Connection timeout!");
     
     // 5. 连接失败，尝试重试
     if (config_.enable_auto_reconnect) {
-      std::cerr << "[ZkClient] Retrying connection..." << std::endl;
+      LOG_INFO("[ZkClient] Retrying connection...");
       return Reconnect();
     }
     
@@ -139,13 +140,12 @@ bool ZkClient::Start() {
  */
 void ZkClient::Stop() {
   if (zk_handle_ != nullptr) {
-    std::cout << "[ZkClient] Closing connection..." << std::endl;
+    LOG_INFO("[ZkClient] Closing connection...");
     
     // 关闭连接（这是一个阻塞操作）
     int ret = zookeeper_close(zk_handle_);
     if (ret != ZOK) {
-      std::cerr << "[ZkClient] Warning: zookeeper_close returned " 
-                << ErrorToString(ret) << std::endl;
+      LOG_ERROR("[ZkClient] Warning: zookeeper_close returned {}", ErrorToString(ret));
     }
     
     // 重置状态标志位
@@ -153,7 +153,7 @@ void ZkClient::Stop() {
     is_connected_ = false;
     connection_state_ = 0;
     
-    std::cout << "[ZkClient] Connection closed." << std::endl;
+    LOG_INFO("[ZkClient] Connection closed.");
   }
 }
 
@@ -195,7 +195,7 @@ bool ZkClient::Create(const std::string& path,
                      const std::string& data, 
                      ZkNodeType node_type) {
   if (!IsConnected()) {
-    std::cerr << "[ZkClient] Error: Not connected!" << std::endl;
+    LOG_ERROR("[ZkClient] Error: Not connected!");
     return false;
   }
 
@@ -203,14 +203,14 @@ bool ZkClient::Create(const std::string& path,
 
   // 1. 检查节点是否已存在
   if (Exists(path)) {
-    std::cout << "[ZkClient] Node already exists: " << path << std::endl;
+    LOG_INFO("[ZkClient] Node already exists: {}", path);
     return true;  // 幂等操作
   }
 
   // 2. 创建父节点（如果不存在）
   // ZooKeeper 的原生 API 不支持递归创建路径，必须先手动创建父节点。
   if (!CreateParentNodes(path)) {
-    std::cerr << "[ZkClient] Failed to create parent nodes for: " << path << std::endl;
+    LOG_ERROR("[ZkClient] Failed to create parent nodes for: {}", path);
     failed_operations_++;
     return false;
   }
@@ -236,11 +236,10 @@ bool ZkClient::Create(const std::string& path,
   );
 
   if (ret == ZOK) {
-    std::cout << "[ZkClient] Node created: " << path << std::endl;
+    LOG_INFO("[ZkClient] Node created: {}", path);
     return true;
   } else {
-    std::cerr << "[ZkClient] Failed to create node: " << path 
-              << ", error: " << ErrorToString(ret) << std::endl;
+    LOG_ERROR("[ZkClient] Failed to create node: {}, error: {}", path, ErrorToString(ret));
     failed_operations_++;
     return false;
   }
@@ -255,7 +254,7 @@ bool ZkClient::Create(const std::string& path,
  */
 bool ZkClient::Get(const std::string& path, std::string& data, bool watch) {
   if (!IsConnected()) {
-    std::cerr << "[ZkClient] Error: Not connected!" << std::endl;
+    LOG_ERROR("[ZkClient] Error: Not connected!");
     return false;
   }
 
@@ -275,12 +274,10 @@ bool ZkClient::Get(const std::string& path, std::string& data, bool watch) {
 
   if (ret == ZOK) {
     data.assign(buffer, buffer_len);
-    std::cout << "[ZkClient] Got data from node: " << path 
-              << " (" << buffer_len << " bytes)" << std::endl;
+    LOG_INFO("[ZkClient] Got data from node: {} ({}) bytes)", path, buffer_len);
     return true;
   } else {
-    std::cerr << "[ZkClient] Failed to get node: " << path 
-              << ", error: " << ErrorToString(ret) << std::endl;
+    LOG_ERROR("[ZkClient] Failed to get node: {}, error: {}", path, ErrorToString(ret));
     failed_operations_++;
     return false;
   }
@@ -294,7 +291,7 @@ bool ZkClient::Get(const std::string& path, std::string& data, bool watch) {
  */
 bool ZkClient::Set(const std::string& path, const std::string& data) {
   if (!IsConnected()) {
-    std::cerr << "[ZkClient] Error: Not connected!" << std::endl;
+    LOG_ERROR("[ZkClient] Error: Not connected!");
     return false;
   }
 
@@ -309,11 +306,10 @@ bool ZkClient::Set(const std::string& path, const std::string& data) {
   );
 
   if (ret == ZOK) {
-    std::cout << "[ZkClient] Set data for node: " << path << std::endl;
+    LOG_INFO("[ZkClient] Set data for node: {}", path);
     return true;
   } else {
-    std::cerr << "[ZkClient] Failed to set node: " << path 
-              << ", error: " << ErrorToString(ret) << std::endl;
+    LOG_ERROR("[ZkClient] Failed to set node: {}, error: {}", path, ErrorToString(ret));
     failed_operations_++;
     return false;
   }
@@ -327,7 +323,7 @@ bool ZkClient::Set(const std::string& path, const std::string& data) {
  */
 bool ZkClient::Delete(const std::string& path, bool recursive) {
   if (!IsConnected()) {
-    std::cerr << "[ZkClient] Error: Not connected!" << std::endl;
+    LOG_ERROR("[ZkClient] Error: Not connected!");
     return false;
   }
 
@@ -342,14 +338,13 @@ bool ZkClient::Delete(const std::string& path, bool recursive) {
   int ret = zoo_delete(zk_handle_, path.c_str(), -1);
 
   if (ret == ZOK) {
-    std::cout << "[ZkClient] Deleted node: " << path << std::endl;
+    LOG_INFO("[ZkClient] Deleted node: {}", path);
     return true;
   } else if (ret == ZNONODE) {
-    std::cout << "[ZkClient] Node not exists: " << path << std::endl;
+    LOG_INFO("[ZkClient] Node not exists: {}", path);
     return true;  // 幂等操作
   } else {
-    std::cerr << "[ZkClient] Failed to delete node: " << path 
-              << ", error: " << ErrorToString(ret) << std::endl;
+    LOG_ERROR("[ZkClient] Failed to delete node: {}, error: {}", path, ErrorToString(ret));
     failed_operations_++;
     return false;
   }
@@ -380,7 +375,7 @@ bool ZkClient::GetChildren(const std::string& path,
                           std::vector<std::string>& children, 
                           bool watch) {
   if (!IsConnected()) {
-    std::cerr << "[ZkClient] Error: Not connected!" << std::endl;
+    LOG_ERROR("[ZkClient] Error: Not connected!");
     return false;
   }
 
@@ -403,12 +398,10 @@ bool ZkClient::GetChildren(const std::string& path,
     // 释放 ZooKeeper 分配的内存
     deallocate_String_vector(&str_vec);
     
-    std::cout << "[ZkClient] Got " << children.size() 
-              << " children for node: " << path << std::endl;
+    LOG_INFO("[ZkClient] Got {} children for node: {}", children.size(), path);
     return true;
   } else {
-    std::cerr << "[ZkClient] Failed to get children: " << path 
-              << ", error: " << ErrorToString(ret) << std::endl;
+    LOG_ERROR("[ZkClient] Failed to get children: {}, error: {}", path, ErrorToString(ret));
     failed_operations_++;
     return false;
   }
@@ -433,12 +426,12 @@ bool ZkClient::RegisterService(const std::string& service_name,
   std::string service_path = config_.root_path + "/" + service_name; // "rpc/UserService"
   std::string instance_path = service_path + "/" + service_addr;  // "rpc/UserService/<service_addr>"
 
-  std::cout << "[ZkClient] Registering service: " << instance_path << std::endl;
+  LOG_INFO("[ZkClient] Registering service: {}", instance_path);
 
   // 2. 创建服务名称节点（持久节点：PERSISTENT）
   if (!Exists(service_path)) {
     if (!Create(service_path, "", ZkNodeType::PERSISTENT)) {
-      std::cerr << "[ZkClient] Failed to create service node: " << service_path << std::endl;
+      LOG_ERROR("[ZkClient] Failed to create service node: {}", service_path);
       return false;
     }
   }
@@ -446,11 +439,11 @@ bool ZkClient::RegisterService(const std::string& service_name,
   // 3. 创建服务实例节点（临时节点：EPHEMERAL）
   // 临时节点会在客户端断开连接时自动删除
   if (!Create(instance_path, service_addr, ZkNodeType::EPHEMERAL)) {
-    std::cerr << "[ZkClient] Failed to create instance node: " << instance_path << std::endl;
+    LOG_ERROR("[ZkClient] Failed to create instance node: {}", instance_path);
     return false;
   }
 
-  std::cout << "[ZkClient] Service registered successfully: " << instance_path << std::endl;
+  LOG_INFO("[ZkClient] Service registered successfully: {}", instance_path);
   return true;
 }
 
@@ -464,7 +457,7 @@ bool ZkClient::UnregisterService(const std::string& service_name,
                                 const std::string& service_addr) {
   std::string instance_path = config_.root_path + "/" + service_name + "/" + service_addr;
   
-  std::cout << "[ZkClient] Unregistering service: " << instance_path << std::endl;
+  LOG_INFO("[ZkClient] Unregistering service: {}", instance_path);
   
   return Delete(instance_path, false); // 只删除临时节点即可
 }
@@ -480,12 +473,11 @@ std::vector<std::string> ZkClient::GetServiceList(const std::string& service_nam
   // server_path = /rpc/UserService，下面的子节点都是服务实例
   std::vector<std::string> children;
   if (GetChildren(service_path, children, false)) {
-    std::cout << "[ZkClient] Found " << children.size() 
-              << " instances for service: " << service_name << std::endl;
+    LOG_INFO("[ZkClient] Found {} instances for service: {}", children.size(), service_name);
     return children;
   }
-  
-  std::cerr << "[ZkClient] Failed to get service list: " << service_name << std::endl;
+
+  LOG_ERROR("[ZkClient] Failed to get service list: {}", service_name);
   return {};
 }
 
@@ -516,7 +508,7 @@ bool ZkClient::WatchService(const std::string& service_name, ZkWatchCallback cal
 void ZkClient::SetWatcher(const std::string& path, ZkWatchCallback callback) {
   std::lock_guard<std::mutex> lock(watchers_mutex_);
   watchers_[path] = callback;
-  std::cout << "[ZkClient] Watch registered for path: " << path << std::endl;
+  LOG_INFO("[ZkClient] Watch registered for path: {}", path);
 }
 
 /**
@@ -525,7 +517,7 @@ void ZkClient::SetWatcher(const std::string& path, ZkWatchCallback callback) {
 void ZkClient::ClearWatcher(const std::string& path) {
   std::lock_guard<std::mutex> lock(watchers_mutex_);
   watchers_.erase(path);
-  std::cout << "[ZkClient] Watch cleared for path: " << path << std::endl;
+  LOG_INFO("[ZkClient] Watch cleared for path: {}", path);
 }
 
 // ============================================================================
@@ -570,15 +562,13 @@ void ZkClient::GlobalWatcher(zhandle_t* zh, int type, int state,
  * @param path 节点路径
  */
 void ZkClient::OnWatcherEvent(int type, int state, const std::string& path) {
-  std::cout << "[ZkClient] Watcher event: type=" << type 
-            << ", state=" << state 
-            << ", path=" << path << std::endl;
+  LOG_INFO("[ZkClient] Watcher event: type={} , state={} , path={}", type, state, path);
 
   // 1. 处理会话事件
   if (type == ZOO_SESSION_EVENT) {
     // 如果是连接成功事件
     if (state == ZOO_CONNECTED_STATE) {
-      std::cout << "[ZkClient] Connected to ZooKeeper!" << std::endl;
+      LOG_INFO("[ZkClient] Connected to ZooKeeper server.");
       
       // 更新连接状态
       is_connected_ = true;
@@ -588,7 +578,7 @@ void ZkClient::OnWatcherEvent(int type, int state, const std::string& path) {
       connect_cv_.notify_all();
       
     } else if (state == ZOO_EXPIRED_SESSION_STATE) {
-      std::cerr << "[ZkClient] Session expired! Reconnecting..." << std::endl;
+      LOG_ERROR("[ZkClient] Session expired! Reconnecting...");
       
       is_connected_ = false;
       connection_state_ = state;
@@ -599,7 +589,7 @@ void ZkClient::OnWatcherEvent(int type, int state, const std::string& path) {
       }
       
     } else if (state == ZOO_CONNECTING_STATE) {
-      std::cout << "[ZkClient] Reconnecting..." << std::endl;
+      LOG_INFO("[ZkClient] Reconnecting...");
       is_connected_ = false;
       connection_state_ = state;
     }
@@ -613,7 +603,7 @@ void ZkClient::OnWatcherEvent(int type, int state, const std::string& path) {
       try {
         it->second(path, type, state);
       } catch (const std::exception& e) {
-        std::cerr << "[ZkClient] Exception in Watch callback: " << e.what() << std::endl;
+        LOG_ERROR("[ZkClient] Exception in Watch callback: {}", e.what());
       }
     }
   }
@@ -624,21 +614,19 @@ void ZkClient::OnWatcherEvent(int type, int state, const std::string& path) {
  */
 bool ZkClient::Reconnect() {
   for (int i = 0; i < config_.max_retry_times; ++i) {
-    std::cout << "[ZkClient] Reconnect attempt " << (i + 1) 
-              << "/" << config_.max_retry_times << std::endl;
+    LOG_INFO("[ZkClient] Reconnect attempt {}/{}", (i + 1), config_.max_retry_times);
     
     Stop();  // 先关闭旧连接
     
     std::this_thread::sleep_for(std::chrono::seconds(1));  // 等待 1 秒
     
     if (Start()) {
-      std::cout << "[ZkClient] Reconnected successfully!" << std::endl;
+      LOG_INFO("[ZkClient] Reconnected successfully!");
       return true;
     }
   }
-  
-  std::cerr << "[ZkClient] Reconnection failed after " 
-            << config_.max_retry_times << " attempts!" << std::endl;
+
+  LOG_ERROR("[ZkClient] Reconnection failed after {} attempts!", config_.max_retry_times);
   return false;
 }
 
@@ -707,7 +695,7 @@ void ZkClient::PrintTreeRecursive(const std::string& path, int depth, int max_de
   }
 
   // 打印当前节点
-  std::cout << prefix << "├─ " << path << std::endl;
+  LOG_INFO("{}├─ {}", prefix, path);
 
   // 获取子节点
   std::vector<std::string> children;
