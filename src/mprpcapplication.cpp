@@ -572,20 +572,23 @@ void MprpcApplication::InitLoggingAsync(const std::string& log_file,
     // ========== 2. 创建异步 sinks ==========
     std::vector<spdlog::sink_ptr> sinks;
 
-    // 控制台输出
+    // 控制台输出（带颜色）
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     console_sink->set_level(spdlog::level::err); // 控制台只打印错误信息
+    // 自定义控制台输出格式：[时间] [级别] [线程ID] 消息
     console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] %v");
     sinks.push_back(console_sink);
 
     // 文件输出
     if (!log_file.empty()) {
+      // 使用滚动文件日志：单个文件最大 10MB，最多保留 3 个文件
+      // 例如：rpc.log, rpc.log.1, rpc.log.2
       constexpr size_t max_file_size = 10 * 1024 * 1024;
       constexpr size_t max_files = 3;
       
       auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
           log_file, max_file_size, max_files);
-      file_sink->set_level(spdlog::level::trace);
+      file_sink->set_level(spdlog::level::trace); // 文件记录所有级别
       file_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] [%s:%#] %v");
       sinks.push_back(file_sink);
     }
@@ -615,6 +618,7 @@ void MprpcApplication::InitLoggingAsync(const std::string& log_file,
     logger->set_level(level);
 
     // ========== 5. 设置为全局默认 logger ==========
+    // 这是关键！设置后，所有 LOG_INFO() 等宏都会使用这个 logger
     spdlog::set_default_logger(logger);
     
     // 异步日志建议按时间刷新（不需要每条都立即刷新）

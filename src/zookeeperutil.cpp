@@ -137,6 +137,7 @@ bool ZkClient::Start() {
 
 /**
  * @brief 停止 ZooKeeper 客户端，关闭连接
+ * 集成了spdlog日志打印功能，确保在关闭连接时记录相关信息。
  */
 void ZkClient::Stop() {
   // 1. 检查日志系统是否可用，因为下面使用了日志记录
