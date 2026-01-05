@@ -547,13 +547,13 @@ void ZkClient::ClearWatcher(const std::string& path) {
  */
 void ZkClient::PrintTree(const std::string& root_path, int max_depth) {
   if (!IsConnected()) {
-    std::cerr << "[ZkClient] Error: Not connected!" << std::endl;
+    LOG_INFO("[ZkClient] Error: Not connected!");
     return;
   }
 
-  std::cout << "\n========== ZooKeeper Tree ===========" << std::endl;
+  LOG_INFO( "\n========== ZooKeeper Tree ===========");
   PrintTreeRecursive(root_path, 0, max_depth, "");
-  std::cout << "=====================================\n" << std::endl;
+  LOG_INFO("=====================================\n");
 }
 
 // ============================================================================
