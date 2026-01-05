@@ -4,7 +4,7 @@
 # 扫描 src 目录下所有的 .cpp 文件
 aux_source_directory(. SRC_LIST)
 
-# 生成核心库 (libmprpc.so)
+# 生成核心库 (libmprpc.a)
 add_library(mprpc STATIC ${SRC_LIST})
 
 #  包含头文件路径
@@ -19,4 +19,6 @@ target_link_libraries(mprpc
     muduo_base  
     Threads::Threads 
     ${Protobuf_LIBRARIES}
+    fmt::fmt 
+    spdlog::spdlog
 )

@@ -41,6 +41,26 @@
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE // 开启所有级别的编译
 #include <spdlog/spdlog.h>
 
+//  解除 Muduo 或其他库可能存在的宏定义冲突
+#ifdef LOG_TRACE
+  #undef LOG_TRACE
+#endif
+#ifdef LOG_DEBUG
+  #undef LOG_DEBUG
+#endif
+#ifdef LOG_INFO
+  #undef LOG_INFO
+#endif
+#ifdef LOG_WARN
+  #undef LOG_WARN
+#endif
+#ifdef LOG_ERROR
+  #undef LOG_ERROR
+#endif
+#ifdef LOG_CRITICAL
+  #undef LOG_CRITICAL
+#endif
+
 //  定义方便的日志宏，直接映射到 spdlog 的宏
 // 使用这些宏可以保留文件行号信息，并且是零成本抽象
 #define LOG_TRACE(...) SPDLOG_TRACE(__VA_ARGS__)
@@ -223,6 +243,7 @@ class MprpcApplication {
    * @param log_level 日志级别 (DEBUG/INFO/WARN/ERROR)
    */
   void InitLogging(const std::string& log_file, const std::string& log_level);
+  void InitLoggingAsync(const std::string& log_file, const std::string& log_level);
 
   /**
    * @brief 注册信号处理器 (捕获 SIGINT/SIGTERM)

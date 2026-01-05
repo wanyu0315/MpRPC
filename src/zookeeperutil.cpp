@@ -139,13 +139,31 @@ bool ZkClient::Start() {
  * @brief 停止 ZooKeeper 客户端，关闭连接
  */
 void ZkClient::Stop() {
+  // 1. 检查日志系统是否可用，因为下面使用了日志记录
+  bool logger_alive = (spdlog::default_logger() != nullptr);
+
+  // 辅助 lambda：安全打印日志：如果 logger 挂了，就用 std::cout/cerr 打印
+  auto safe_log = [&](const std::string& msg, bool is_error = false) {
+      if (logger_alive) {
+          if (is_error) LOG_ERROR("{}", msg);
+          else LOG_INFO("{}", msg);
+      } else {
+          // 如果 logger 挂了，降级到 std::cout/cerr
+          if (is_error) std::cerr << "[MprpcApplication] Error: " << msg << std::endl;
+          else std::cout << "[MprpcApplication] " << msg << std::endl;
+      }
+  };
+
+  std::cout << "检查完毕日志是否可用：" << logger_alive << std::endl;
+
+  // 2. 关闭连接
   if (zk_handle_ != nullptr) {
-    LOG_INFO("[ZkClient] Closing connection...");
+    safe_log("[ZkClient] Closing connection...");
     
     // 关闭连接（这是一个阻塞操作）
     int ret = zookeeper_close(zk_handle_);
     if (ret != ZOK) {
-      LOG_ERROR("[ZkClient] Warning: zookeeper_close returned {}", ErrorToString(ret));
+      safe_log("[ZkClient] Warning: zookeeper_close returned " + ErrorToString(ret), true);
     }
     
     // 重置状态标志位
@@ -153,7 +171,7 @@ void ZkClient::Stop() {
     is_connected_ = false;
     connection_state_ = 0;
     
-    LOG_INFO("[ZkClient] Connection closed.");
+    safe_log("[ZkClient] Connection closed.");
   }
 }
 
