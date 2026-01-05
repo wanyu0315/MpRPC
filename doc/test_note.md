@@ -220,5 +220,6 @@
   OnWatcherEvent 成功在 map 中找到了回调函数。
   设置的 Lambda 回调被执行，打印了 [CALLBACK]。
 
-
+## spdlog日志库测试
+注意：spdlog 依赖 fm 库，因此使用了spdlog的可执行文件都需要链接fm库
   
