@@ -18,3 +18,12 @@ target_link_libraries(rpc_proto_lib PUBLIC ${Protobuf_LIBRARIES})
 # 导出头文件路径 (当前 Binary 目录即 build/proto)，这里的CMAKE_CURRENT_BINARY_DIR是构建目录，在build下。
 # rpc_proto_lib 说："谁链接我，谁就必须把 build/proto 加入头文件搜索路径"
 target_include_directories(rpc_proto_lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
+
+# 安装部署 RPC Proto 库和头文件
+# 1. 安装库文件 (librpc_proto_lib.a) 到 /usr/local/lib
+install(TARGETS rpc_proto_lib DESTINATION lib)
+
+# 2. 安装生成的头文件 (*.pb.h) 到 /usr/local/include/mprpc
+# 注意：生成的头文件在构建目录(BINARY_DIR)下
+install(FILES ${PROTO_GEN_HDRS} DESTINATION include/mprpc)
