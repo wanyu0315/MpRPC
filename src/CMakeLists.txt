@@ -19,6 +19,16 @@ target_link_libraries(mprpc
     muduo_base  
     Threads::Threads 
     ${Protobuf_LIBRARIES}
+    zookeeper_mt
     fmt::fmt 
     spdlog::spdlog
 )
+
+
+# 安装部署核心库和头文件
+# 1. 安装静态库 (libmprpc.a) 到 /usr/local/lib
+install(TARGETS mprpc DESTINATION lib)
+
+# 安装头文件到 <prefix>/include
+# 将 include 目录下的所有 .h 文件拷贝到 /usr/local/include/mprpc
+install(DIRECTORY include/ DESTINATION include/mprpc FILES_MATCHING PATTERN "*.h")
