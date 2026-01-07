@@ -121,6 +121,13 @@ bool ZkClient::Start() {
     if (!config_.root_path.empty() && config_.root_path != "/") {
       CreateParentNodes(config_.root_path);
     }
+
+    // 注册优雅关闭 Hook，当 MprpcApplication::Shutdown() 被调用时，会自动回调 Stop()
+    shutdown_hook_id_ = MprpcApplication::GetInstance().RegisterShutdownHook([this]() {
+      LOG_INFO("[ZkClient] Shutdown hook triggered.");
+      this->Stop();
+    });
+
     return true;
   } else {
     LOG_ERROR("[ZkClient] Connection timeout!");

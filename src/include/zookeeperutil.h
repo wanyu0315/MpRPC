@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "mprpcapplication.h"
+
 #include <zookeeper/zookeeper.h>
 #include <atomic>
 #include <condition_variable>
@@ -300,6 +302,8 @@ class ZkClient {
   // 禁止拷贝和赋值
   ZkClient(const ZkClient&) = delete;
   ZkClient& operator=(const ZkClient&) = delete;
+
+  int shutdown_hook_id_{-1}; // 优雅关闭钩子 ID
 
   // ========== 内部方法 ==========
   

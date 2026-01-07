@@ -579,7 +579,6 @@ MprpcChannel::MprpcChannel(const std::string& ip, uint16_t port,
     // 防止程序被 kill 时，析构函数没执行，导致线程没 join
     shutdown_hook_id_ = MprpcApplication::GetInstance().RegisterShutdownHook([this]() {
         LOG_INFO("[MprpcChannel] Shutdown hook triggered.");
-        std::cout << "[MprpcChannel] Shutdown hook triggered." << std::endl;
         this->Shutdown(); // 调用提取出来的 Shutdown 方法
     });
 }
