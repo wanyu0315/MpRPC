@@ -5,7 +5,10 @@
 aux_source_directory(. SRC_LIST)
 
 # 生成核心库 (libmprpc.a)
-add_library(mprpc STATIC ${SRC_LIST})
+add_library(mprpc STATIC 
+    ${SRC_LIST} 
+    $<TARGET_OBJECTS:rpc_proto_lib> # 这相当于把 rpc_proto_lib 里的 .o 文件直接拿过来，和 SRC_LIST 一起打包进 libmprpc.a
+)
 
 #  包含头文件路径
 # 让代码能找到 src/include 下的头文件 (如 rpcprovider.h)
