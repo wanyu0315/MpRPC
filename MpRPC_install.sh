@@ -26,6 +26,6 @@ sudo ldconfig
 # 7. 完成提示
 echo "============================================================"
 echo "Build & Install Complete!"
-echo "Library Path: /usr/local/mprpc/lib"
-echo "Include Path: /usr/local/mprpc/include"
+echo "Library Path: /usr/local/lib"
+echo "Include Path: /usr/local/include/mprpc"
 echo "============================================================"
