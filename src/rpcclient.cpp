@@ -501,6 +501,8 @@ ConnectionPool::~ConnectionPool() {
  * @details 创建指定数量的 RpcConnection 并尝试连接。
  */
 bool ConnectionPool::Init() {
+    LOG_INFO("[ConnPool] Initializing connection pool to {}:{} with {} connections.",
+             ip_, port_, config_.connection_pool_size);
     for (int i = 0; i < config_.connection_pool_size; ++i) {
         auto conn = std::make_shared<RpcConnection>(i, ip_, port_, config_);    // 创建N个连接对象实例
         if (!conn->Connect()) {
@@ -508,6 +510,7 @@ bool ConnectionPool::Init() {
             // std::cerr << "[ConnPool] Warn: Failed to connect " << i << ", will retry later." << std::endl;
             // 策略：即使部分连接失败也继续初始化，允许后续重连
         }
+        LOG_INFO("[ConnPool] Successfully created connection {}", i);
         connections_.push_back(conn); // 创建的连接加入连接池（一个 vector 里）
     }
     return true;
