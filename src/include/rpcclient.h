@@ -99,6 +99,8 @@ private:
     std::mutex send_mutex_;      // 保护发送操作
     std::string recv_buffer_;    // 接收缓冲区
     std::mutex recv_mutex_;      // 保护接收缓冲区
+    std::mutex thread_start_mutex_;     // 防止多线程同时启动的锁
+    bool thread_is_running_ = false;    // 记录是否已经启动的状态
 
     std::thread recv_thread_;
     std::atomic<bool> stop_recv_thread_{false};

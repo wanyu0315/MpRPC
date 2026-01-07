@@ -276,12 +276,26 @@ bool RpcConnection::SendRequest(uint64_t request_id,
  * @details
  * 【并发化修改】：这是新增的函数。
  * 以前的接收是在 CallMethod 中同步调用的，现在每个连接启动一个独立的 std::thread 进行接收。
+ * 解决了并发重复启动导致的崩溃问题
  */
-void RpcConnection::StartReceiveThread(
-    std::function<void(uint64_t, int32_t, const std::string&, const std::string&)> callback) {
+void RpcConnection::StartReceiveThread(std::function<void(uint64_t, int32_t, const std::string&, const std::string&)> callback) {
+    std::lock_guard<std::mutex> lock(thread_start_mutex_);  // 加锁防止多线程同时启动
+
+    // 如果已经在运行，直接返回，不做任何操作
+    // 这让后续拿到该连接的线程可以直接复用已有的接收线程
+    if (thread_is_running_) {
+        LOG_INFO("[Conn-{}] Receive thread already running, can be reused", id_);
+        return;
+    }
+
     response_callback_ = callback; // 绑定回调，连接层只负责收字节，收齐了就通过这个回调扔给 Channel 去处理业务。
     stop_recv_thread_ = false;
     recv_thread_ = std::thread([this]() { ReceiveLoop(); }); // 启动线程：std::thread 启动，执行 ReceiveLoop
+
+    // 标记为已运行
+    thread_is_running_ = true;
+
+    LOG_INFO("[Conn-{}] Receive thread started.", id_);
 }
 
 void RpcConnection::StopReceiveThread() {
@@ -289,6 +303,9 @@ void RpcConnection::StopReceiveThread() {
     if (recv_thread_.joinable()) {
         recv_thread_.join();
     }
+
+    std::lock_guard<std::mutex> lock(thread_start_mutex_);
+    thread_is_running_ = false;
 }
 
 /**
