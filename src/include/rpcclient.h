@@ -17,6 +17,7 @@
 #include <string>
 #include <functional>
 #include <chrono>
+#include "rpccontroller.h"
 
 // ============================================================================
 // 配置结构体
