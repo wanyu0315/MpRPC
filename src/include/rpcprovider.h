@@ -53,7 +53,7 @@ class RpcProvider {
     int idle_timeout_seconds = 300;  
     
     bool enable_metrics = true; // 是否开启指标统计
-    std::string log_level = "INFO";
+    // std::string log_level = "INFO";
   };
 
   // 构造函数：传入配置，初始化 Environment
