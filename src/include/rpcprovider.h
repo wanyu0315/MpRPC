@@ -168,7 +168,8 @@ class RpcProvider {
                        uint32_t& header_size,
                        std::string& service_name,
                        std::string& method_name,
-                       std::string& args_str);
+                       std::string& args_str,
+                       uint64_t& request_id);
 
   /**
    * @brief 执行 RPC 业务逻辑
@@ -181,14 +182,16 @@ class RpcProvider {
   void HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
                         const std::string& service_name,
                         const std::string& method_name,
-                        const std::string& args_str);
+                        const std::string& args_str,
+                        uint64_t request_id);
 
   // ================= 响应发送区 =================
 
   // 发送正常响应 (由 Closure 回调触发)
   // 会自动序列化 response 并添加长度头
   void SendRpcResponse(muduo::net::TcpConnectionPtr conn,
-                       google::protobuf::Message* response);
+                       google::protobuf::Message* response,
+                       uint64_t request_id);
   
   // 发送错误响应 (如解析失败、服务未找到)
   void SendErrorResponse(const muduo::net::TcpConnectionPtr& conn,

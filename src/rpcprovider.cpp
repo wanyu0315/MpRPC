@@ -15,6 +15,27 @@
 #include "rpcheader.pb.h"
 
 // ===========================================================================
+// 辅助类：用于将 C++11 Lambda 转换为 google::protobuf::Closure
+// ==========================================================================
+class RpcClosure : public google::protobuf::Closure {
+public:
+    using Callback = std::function<void()>;
+
+    explicit RpcClosure(Callback cb) : cb_(cb) {}
+
+    // 重写 Run 方法
+    void Run() override {
+        if (cb_) {
+            cb_();
+        }
+        delete this; // 关键：Run 执行完后，必须自杀 (delete this)，这是 Protobuf Closure 的规矩
+    }
+
+private:
+    Callback cb_;
+};
+
+// ===========================================================================
 // 辅助工具：TCP 拆包核心逻辑
 // ===========================================================================
 // 作用：尝试从 buffer 中读取 varint32 类型的长度，但不移动 buffer 的读取指针（Peek）。
@@ -350,13 +371,14 @@ void RpcProvider::OnMessage(const muduo::net::TcpConnectionPtr& conn,
   // 如果收到半个包，循环会因 TryParseMessage 返回 false 而终止
   while (true) {
     uint32_t header_size = 0;
+    uint64_t request_id = 0;  // <--- 定义请求ID变量
     std::string service_name, method_name, args_str;
 
     // 尝试解析一个完整的消息
     // 返回 true 表示成功解析了一个包，buffer 指针已后移
     // 返回 false 表示数据不够（半包），buffer 指针未动，等待下次数据到来
     bool parsed = TryParseMessage(buffer, header_size, 
-                                  service_name, method_name, args_str);
+                                  service_name, method_name, args_str, request_id);
     
     if (!parsed) {
       // 半包：数据不够，退出循环，等待 TCP 继续传输
@@ -374,7 +396,7 @@ void RpcProvider::OnMessage(const muduo::net::TcpConnectionPtr& conn,
     metrics_.pending_requests++;
     
     try {
-      HandleRpcRequest(conn, service_name, method_name, args_str);
+      HandleRpcRequest(conn, service_name, method_name, args_str, request_id);
     } catch (const std::exception& e) {
       LOG_ERROR("Exception handling RPC request: {}", e.what());
       SendErrorResponse(conn, RPC_INTERNAL_ERROR, e.what());
@@ -398,7 +420,8 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
                                   uint32_t& header_size,
                                   std::string& service_name,
                                   std::string& method_name,
-                                  std::string& args_str) {
+                                  std::string& args_str,
+                                  uint64_t& request_id) {
   // ==========================================================
   // 阶段 1: 偷看 (Peek) 头部长度
   // ==========================================================
@@ -445,9 +468,11 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
     throw std::runtime_error("Invalid RPC header");
   }
 
+  // ... 解析 Header ...
   service_name = rpc_header.service_name();
   method_name = rpc_header.method_name();
   uint32_t args_size = rpc_header.args_size();
+  request_id = rpc_header.request_id(); // <--- 提取请求ID
 
   // 校验 args 长度
   if (args_size > config_.max_message_size) {
@@ -491,7 +516,8 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
 void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
                                    const std::string& service_name,
                                    const std::string& method_name,
-                                   const std::string& args_str) {
+                                   const std::string& args_str,
+                                   uint64_t request_id) {
   // 1. 查找服务和方法
   google::protobuf::Service* service = nullptr;
   const google::protobuf::MethodDescriptor* method = nullptr;
@@ -536,8 +562,12 @@ void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
   
   //  绑定回调闭包 (Closure)
   // 相当于构造一个回调函数：当业务做完后，请调用 this->SendRpcResponse
-  google::protobuf::Closure* done = google::protobuf::NewCallback(
-      this, &RpcProvider::SendRpcResponse, conn, response_ptr);
+  // 利用 Lambda 捕获 this, conn, response_ptr, request_id，这样无论有多少个参数都能传进去
+  google::protobuf::Closure* done = new RpcClosure([this, conn, response_ptr, request_id]() {
+        this->SendRpcResponse(conn, response_ptr, request_id);
+    });
+  // google::protobuf::Closure* done = google::protobuf::NewCallback(
+  //     this, &RpcProvider::SendRpcResponse, conn, response_ptr, request_id);
 
   // 5. 执行业务逻辑
   // 这一步会跳转到 RaftService 的实现代码中
@@ -549,7 +579,8 @@ void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
 
 // 发送响应：添加长度头
 void RpcProvider::SendRpcResponse(muduo::net::TcpConnectionPtr conn,
-                                  google::protobuf::Message* response) {
+                                  google::protobuf::Message* response,
+                                  uint64_t request_id) {
   // 接管 response 所有权，确保函数结束时自动 delete，防止内存泄漏
   std::unique_ptr<google::protobuf::Message> response_guard(response);
 
@@ -560,21 +591,31 @@ void RpcProvider::SendRpcResponse(muduo::net::TcpConnectionPtr conn,
     return;
   }
 
-  // 构造带长度头的帧：[varint32: size] + [data]
+  // 构造 RpcHeader，设置 request_id
+  RPC::RpcHeader rpc_header;
+  rpc_header.set_request_id(request_id); // 客户端靠这个 ID 知道是哪个请求的响应
+  rpc_header.set_error_code(0);
+  rpc_header.set_args_size(response_str.size());
+
+  std::string header_str;
+  rpc_header.SerializeToString(&header_str);
+
+  // 构造带长度头的帧：[Varint: header_len] + [Header] + [Body]
   // 客户端收到后，也必须先读 varint 长度，再读 data
   std::string frame;
   {
     google::protobuf::io::StringOutputStream string_output(&frame);
     google::protobuf::io::CodedOutputStream coded_output(&string_output);
-    coded_output.WriteVarint32(response_str.size()); // 写入长度
+    coded_output.WriteVarint32(header_str.size()); // 写入 header 长度
     // CodedOutputStream 析构时会 flush 到 frame
   }
-  frame.append(response_str); // 追加数据data部分
+  frame.append(header_str); // 追加 header 部分
+  frame.append(response_str); // 追加 body 部分
 
   conn->send(frame); // 发送的是frame
 
   metrics_.pending_requests--; // 响应发送完毕，正在处理的请求结束，计数 -1
-  LOG_DEBUG("Response sent: {} bytes", response_str.size());
+  LOG_DEBUG("Response sent: id={}, bytes={}", request_id, frame.size());
 }
 
 // 发送错误响应（用于协议错误或系统错误）
