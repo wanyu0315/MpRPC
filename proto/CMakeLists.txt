@@ -7,8 +7,9 @@ file(GLOB PROTO_FILES "*.proto")
 # 生成的文件通常会放在 build 目录下，保持源码目录干净
 protobuf_generate_cpp(PROTO_GEN_SRCS PROTO_GEN_HDRS ${PROTO_FILES})
 
-# 定义库目标
-add_library(rpc_proto_lib ${PROTO_GEN_SRCS} ${PROTO_GEN_HDRS})
+# OBJECT 库
+# OBJECT 库只编译生成 .o 文件，不打成 .a 包，专门用于被其他库吸纳
+add_library(rpc_proto_lib OBJECT ${PROTO_GEN_SRCS} ${PROTO_GEN_HDRS})
 
 set_target_properties(rpc_proto_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -21,8 +22,7 @@ target_include_directories(rpc_proto_lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 
 # 安装部署 RPC Proto 库和头文件
-# 1. 安装库文件 (librpc_proto_lib.a) 到 /usr/local/lib
-install(TARGETS rpc_proto_lib DESTINATION lib)
+# 1.OBJECT 库通常不需要 install TARGETS，它的内容会被吸收到 mprpc 中
 
 # 2. 安装生成的头文件 (*.pb.h) 到 /usr/local/include/mprpc
 # 注意：生成的头文件在构建目录(BINARY_DIR)下
