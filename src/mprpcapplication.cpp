@@ -281,7 +281,7 @@ void MprpcApplication::Shutdown() {
   // 3. 逆序调用关闭钩子（类似于栈的 LIFO 顺序）
   {
     std::lock_guard<std::mutex> lock(shutdown_hooks_mutex_);
-    safe_log("开始执行 shutdown hooks... ，hook数量：" + std::to_string(shutdown_hooks_.size()), false);
+    safe_log("开始 shutdown hooks，需要执行的hook数量：" + std::to_string(shutdown_hooks_.size()), false);
     for (auto it = shutdown_hooks_.rbegin(); it != shutdown_hooks_.rend(); ++it) {
       try {
         safe_log("Executing shutdown hook #" + std::to_string(it->first), false);
