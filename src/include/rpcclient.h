@@ -28,7 +28,7 @@ struct RpcClientConfig {
   int max_retry_times = 3;            // 最大重试次数
   int max_message_size = 10 * 1024 * 1024;  // 最大消息 10MB
 
-    // 新增：连接池配置
+    // 连接池配置
   int connection_pool_size = 4;        // 连接池大小（建议 = CPU 核数）
   int io_thread_pool_size = 2;         // IO 线程数（接收线程）
 
