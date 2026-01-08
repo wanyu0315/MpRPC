@@ -1,0 +1,4 @@
+/home/developer/MyRPC/test_integration/build/CMakeFiles/provider.dir
+/home/developer/MyRPC/test_integration/build/CMakeFiles/consumer.dir
+/home/developer/MyRPC/test_integration/build/CMakeFiles/edit_cache.dir
+/home/developer/MyRPC/test_integration/build/CMakeFiles/rebuild_cache.dir

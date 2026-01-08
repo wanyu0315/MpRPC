@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/consumer.dir/consumer.cpp.o CMakeFiles/consumer.dir/user.pb.cc.o -o consumer   -L/usr/local/lib  -Wl,-rpath,/usr/local/lib -lmprpc -lmuduo_net -lmuduo_base -lzookeeper_mt /usr/lib/x86_64-linux-gnu/libspdlog.so.1.9.2 -lpthread /usr/lib/x86_64-linux-gnu/libprotobuf.so /usr/lib/x86_64-linux-gnu/libfmt.so.8.1.1 -Wl,--as-needed 

@@ -1,0 +1,285 @@
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:629] ========================================
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:632]   Log Level: INFO
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:633] ========================================
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:653] Registering signal handlers...
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:665] Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:167] Framework initialized successfully!
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:168] =================================================
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:224] Registered shutdown hook #1
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:630] Async spdlog initialized successfully!
+[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:631]   Mode: Async (Non-blocking)
+[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:29:58.794] [info] [180548] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:29:58.794] [info] [180548] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:29:58.794] [info] [180541] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:29:58.794] [info] [180541] [mprpcapplication.cpp:224] Registered shutdown hook #2
+[2026-01-08 16:29:58.794] [info] [180541] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:29:58.794] [info] [180541] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:522] [ConnPool] Initializing connection pool to 127.0.0.1:8000 with 4 connections.
+[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:175] [Conn-0] Connected to 127.0.0.1:8000
+[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 0
+[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:175] [Conn-1] Connected to 127.0.0.1:8000
+[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 1
+[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:175] [Conn-2] Connected to 127.0.0.1:8000
+[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 2
+[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:175] [Conn-3] Connected to 127.0.0.1:8000
+[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 3
+[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:298] [Conn-0] Receive thread started.
+[2026-01-08 16:29:58.795] [info] [180541] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:29:58.795] [info] [180541] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:298] [Conn-1] Receive thread started.
+[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] 检查完毕日志是否可用：1
+[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] [MprpcApplication] 触发优雅shutdown机制，开始逆序调用shutdown hooks...
+[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] 开始 shutdown hooks，需要执行的hook数量：2
+[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:2
+[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] Closing zookeeper handle...
+[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:133] [ZkClient] Shutdown hook triggered.
+[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:175] [ZkClient] 正在执行 Stop 操作...
+[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] ZooKeeper 连接已安全关闭.
+[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:1
+[2026-01-08 16:29:58.796] [info] [180541] [rpcclient.cpp:602] [MprpcChannel] Shutdown hook triggered.
+[2026-01-08 16:29:58.796] [info] [180541] [rpcclient.cpp:626] [MprpcChannel] Shutting down...
+[2026-01-08 16:29:59.793] [info] [180541] [rpcclient.cpp:646] [MprpcChannel] MprpcChannel Shutdown 完毕
+[2026-01-08 16:29:59.793] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] MprpcApplication Shutdown complete.
+
+[2026-01-08 16:48:25.042] [info] [185230] [mprpcapplication.cpp:629] ========================================
+[2026-01-08 16:48:25.042] [info] [185230] [mprpcapplication.cpp:630] Async spdlog initialized successfully!
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:631]   Mode: Async (Non-blocking)
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:632]   Log Level: INFO
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:633] ========================================
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:653] Registering signal handlers...
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:665] Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:167] Framework initialized successfully!
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:168] =================================================
+[2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:224] Registered shutdown hook #1
+[2026-01-08 16:48:25.043] [info] [185242] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.043] [info] [185237] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.043] [info] [185242] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.043] [info] [185243] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.043] [info] [185237] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.043] [info] [185242] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.043] [info] [185237] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.043] [info] [185242] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.043] [info] [185237] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.043] [info] [185237] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.043] [info] [185242] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.043] [info] [185247] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.043] [info] [185249] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.043] [info] [185243] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.043] [info] [185243] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.043] [info] [185243] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.043] [info] [185243] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.043] [info] [185250] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185247] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185240] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185240] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185240] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185240] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185240] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185247] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185247] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185250] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185247] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185252] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185252] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185251] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185253] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185252] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185252] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185246] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185252] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185246] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185246] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185246] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185246] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185245] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185245] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185245] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185249] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185238] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185245] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185245] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185253] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185253] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185236] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185253] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185253] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185236] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185236] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185236] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185236] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185239] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.044] [info] [185239] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185239] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.044] [info] [185239] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.044] [info] [185239] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.044] [info] [185244] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.045] [info] [185244] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185244] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.045] [info] [185244] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.045] [info] [185244] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185249] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.045] [info] [185249] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.045] [info] [185249] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185238] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185238] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.045] [info] [185238] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.045] [info] [185238] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185250] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.045] [info] [185251] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185251] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.045] [info] [185251] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.045] [info] [185251] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185257] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.045] [info] [185257] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.045] [info] [185257] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185257] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 16:48:25.045] [info] [185257] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.046] [info] [185250] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.046] [error] [185250] [zookeeperutil.cpp:91] [ZkClient] Already connected!
+[2026-01-08 16:48:25.046] [error] [185250] [zookeeperutil.cpp:435] [ZkClient] Error: Not connected!
+[2026-01-08 16:48:25.046] [error] [185250] [zookeeperutil.cpp:537] [ZkClient] Failed to get service list: UserServiceRpc
+[2026-01-08 16:48:25.047] [info] [185248] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.047] [info] [185248] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.047] [info] [185248] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.047] [info] [185248] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.047] [error] [185248] [zookeeperutil.cpp:91] [ZkClient] Already connected!
+[2026-01-08 16:48:25.047] [info] [185241] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.047] [info] [185241] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.047] [info] [185241] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.047] [info] [185241] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.047] [error] [185241] [zookeeperutil.cpp:91] [ZkClient] Already connected!
+[2026-01-08 16:48:25.047] [error] [185241] [zookeeperutil.cpp:435] [ZkClient] Error: Not connected!
+[2026-01-08 16:48:25.047] [error] [185241] [zookeeperutil.cpp:537] [ZkClient] Failed to get service list: UserServiceRpc
+[2026-01-08 16:48:25.047] [error] [185248] [zookeeperutil.cpp:435] [ZkClient] Error: Not connected!
+[2026-01-08 16:48:25.047] [error] [185248] [zookeeperutil.cpp:537] [ZkClient] Failed to get service list: UserServiceRpc
+[2026-01-08 16:48:25.048] [info] [185254] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 16:48:25.048] [info] [185254] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 16:48:25.048] [info] [185254] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 16:48:25.048] [info] [185254] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 16:48:25.048] [error] [185254] [zookeeperutil.cpp:91] [ZkClient] Already connected!
+[2026-01-08 16:48:25.048] [error] [185254] [zookeeperutil.cpp:435] [ZkClient] Error: Not connected!
+[2026-01-08 16:48:25.048] [error] [185254] [zookeeperutil.cpp:537] [ZkClient] Failed to get service list: UserServiceRpc
+[2026-01-08 16:48:25.055] [info] [185256] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.055] [info] [185256] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.055] [info] [185242] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185242] [mprpcapplication.cpp:224] Registered shutdown hook #2
+[2026-01-08 16:48:25.055] [info] [185237] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185238] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185257] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185246] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185240] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185252] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185244] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.055] [info] [185243] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.056] [info] [185239] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.056] [info] [185259] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.056] [info] [185259] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.056] [info] [185236] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.056] [info] [185247] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.056] [info] [185271] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.056] [info] [185271] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.056] [info] [185253] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.056] [info] [185251] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.056] [info] [185245] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.056] [info] [185249] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 16:48:25.058] [info] [185264] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.058] [info] [185264] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.064] [info] [185262] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.064] [info] [185262] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.065] [info] [185269] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.065] [info] [185269] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.067] [info] [185270] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.067] [info] [185270] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.068] [info] [185268] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.068] [info] [185268] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.071] [info] [185274] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.071] [info] [185274] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.074] [info] [185277] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.074] [info] [185277] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.074] [info] [185280] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.074] [info] [185280] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.075] [info] [185283] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.075] [info] [185283] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.075] [info] [185279] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.075] [info] [185279] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.076] [info] [185282] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.076] [info] [185282] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.077] [info] [185286] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.077] [info] [185286] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.078] [info] [185287] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 16:48:25.078] [info] [185287] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 16:48:25.080] [info] [185245] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185245] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185245] [rpcclient.cpp:522] [ConnPool] Initializing connection pool to 127.0.0.1:8000 with 4 connections.
+[2026-01-08 16:48:25.080] [info] [185249] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185237] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185242] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185257] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185252] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185244] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185236] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185247] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185251] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185253] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185238] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185246] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185240] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185243] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185239] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 16:48:25.080] [info] [185245] [rpcclient.cpp:175] [Conn-0] Connected to 127.0.0.1:8000
+[2026-01-08 16:48:25.080] [info] [185245] [rpcclient.cpp:531] [ConnPool] Successfully created connection 0
+[2026-01-08 16:48:25.080] [info] [185237] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.081] [info] [185245] [rpcclient.cpp:175] [Conn-1] Connected to 127.0.0.1:8000
+[2026-01-08 16:48:25.081] [info] [185245] [rpcclient.cpp:531] [ConnPool] Successfully created connection 1
+[2026-01-08 16:48:25.081] [info] [185245] [rpcclient.cpp:175] [Conn-2] Connected to 127.0.0.1:8000
+[2026-01-08 16:48:25.081] [info] [185245] [rpcclient.cpp:531] [ConnPool] Successfully created connection 2
+[2026-01-08 16:48:25.081] [info] [185245] [rpcclient.cpp:175] [Conn-3] Connected to 127.0.0.1:8000
+[2026-01-08 16:48:25.081] [info] [185245] [rpcclient.cpp:531] [ConnPool] Successfully created connection 3
+[2026-01-08 16:48:25.081] [info] [185245] [rpcclient.cpp:298] [Conn-0] Receive thread started.
+[2026-01-08 16:48:25.081] [info] [185237] [rpcclient.cpp:298] [Conn-1] Receive thread started.
+[2026-01-08 16:48:25.081] [info] [185257] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.081] [info] [185257] [rpcclient.cpp:298] [Conn-2] Receive thread started.
+[2026-01-08 16:48:25.081] [info] [185244] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.081] [info] [185236] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.081] [info] [185251] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.081] [info] [185251] [rpcclient.cpp:287] [Conn-0] Receive thread already running, can be reused
+[2026-01-08 16:48:25.081] [info] [185244] [rpcclient.cpp:298] [Conn-3] Receive thread started.
+[2026-01-08 16:48:25.082] [info] [185238] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.082] [info] [185246] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.082] [info] [185246] [rpcclient.cpp:287] [Conn-2] Receive thread already running, can be reused
+[2026-01-08 16:48:25.082] [info] [185240] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.082] [info] [185243] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.082] [info] [185243] [rpcclient.cpp:287] [Conn-0] Receive thread already running, can be reused
+[2026-01-08 16:48:25.082] [info] [185249] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.082] [info] [185252] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.082] [info] [185252] [rpcclient.cpp:287] [Conn-2] Receive thread already running, can be reused
+[2026-01-08 16:48:25.082] [info] [185247] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.082] [info] [185247] [rpcclient.cpp:287] [Conn-0] Receive thread already running, can be reused
+[2026-01-08 16:48:25.084] [info] [185240] [rpcclient.cpp:287] [Conn-3] Receive thread already running, can be reused
+[2026-01-08 16:48:25.084] [info] [185239] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.084] [info] [185239] [rpcclient.cpp:287] [Conn-1] Receive thread already running, can be reused
+[2026-01-08 16:48:25.084] [info] [185242] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.084] [info] [185242] [rpcclient.cpp:287] [Conn-2] Receive thread already running, can be reused
+[2026-01-08 16:48:25.084] [info] [185253] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 16:48:25.084] [info] [185236] [rpcclient.cpp:287] [Conn-3] Receive thread already running, can be reused
+[2026-01-08 16:48:25.084] [info] [185253] [rpcclient.cpp:287] [Conn-3] Receive thread already running, can be reused
+[2026-01-08 16:48:25.084] [info] [185249] [rpcclient.cpp:287] [Conn-1] Receive thread already running, can be reused
+[2026-01-08 16:48:25.084] [info] [185238] [rpcclient.cpp:287] [Conn-1] Receive thread already running, can be reused
+[2026-01-08 16:48:25.125] [info] [185230] [mprpcapplication.cpp:271] [MprpcApplication] 检查完毕日志是否可用：1
+[2026-01-08 16:48:25.125] [info] [185230] [mprpcapplication.cpp:271] [MprpcApplication] [MprpcApplication] 触发优雅shutdown机制，开始逆序调用shutdown hooks...
+[2026-01-08 16:48:25.125] [info] [185230] [mprpcapplication.cpp:271] [MprpcApplication] 开始 shutdown hooks，需要执行的hook数量：2
+[2026-01-08 16:48:25.125] [info] [185230] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:2
+[2026-01-08 16:48:25.125] [info] [185230] [zookeeperutil.cpp:133] [ZkClient] Shutdown hook triggered.
+[2026-01-08 16:48:25.125] [info] [185230] [zookeeperutil.cpp:175] [ZkClient] 正在执行 Stop 操作...
+[2026-01-08 16:48:25.125] [info] [185230] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] Closing zookeeper handle...
+[2026-01-08 16:48:25.125] [info] [185230] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] ZooKeeper 连接已安全关闭.
+[2026-01-08 16:48:25.125] [info] [185230] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:1
+[2026-01-08 16:48:25.125] [info] [185230] [rpcclient.cpp:602] [MprpcChannel] Shutdown hook triggered.
+[2026-01-08 16:48:25.125] [info] [185230] [rpcclient.cpp:626] [MprpcChannel] Shutting down...
+[2026-01-08 16:48:26.043] [info] [185230] [rpcclient.cpp:646] [MprpcChannel] MprpcChannel Shutdown 完毕
+[2026-01-08 16:48:26.043] [info] [185230] [mprpcapplication.cpp:271] [MprpcApplication] MprpcApplication Shutdown complete.
