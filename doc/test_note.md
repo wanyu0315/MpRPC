@@ -222,4 +222,25 @@
 
 ## spdlog日志库测试
 注意：spdlog 依赖 fm 库，因此使用了spdlog的可执行文件都需要链接fm库
+### 测试用例：
+  // 1. 测试基本输出
+  LOG_INFO("========== Testing Basic Log ==========");
+  LOG_INFO("Hello, Mprpc! Port: {}", 8080);
+  LOG_WARN("This is a warning message.");
+  LOG_ERROR("This is an error message with arg: {}", "ErrorDetails");
   
+  // 2. 测试日志级别过滤
+  // 假设配置文件或者 Init 中默认是 INFO
+  LOG_DEBUG("This debug message should NOT appear if level is INFO"); 
+
+  // 3. 测试多线程并发写日志 (验证是否线程安全/乱序)
+  LOG_INFO("========== Testing Concurrency ==========");
+  std::thread t1(test_log_concurrency);
+  std::thread t2(test_log_concurrency);
+
+  t1.join();
+  t2.join();
+### 出现的问题
+  没有显式关闭MprpcApplication和spdlog，导致析构顺序错误，在spdlog析构后依然有对象在使用LOG宏
+### 期望输出
+  详细测试输出日志查看log_file/test_spdlog.log
