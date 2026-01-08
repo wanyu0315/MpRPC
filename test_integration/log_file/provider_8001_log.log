@@ -1,3 +1,4 @@
+集群测试：
 [2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:629] Async spdlog initialized successfully!
 [2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:631]   Log Level: INFO
 [2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:632] ========================================

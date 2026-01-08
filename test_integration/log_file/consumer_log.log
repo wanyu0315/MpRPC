@@ -1,51 +1,4 @@
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:629] ========================================
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:632]   Log Level: INFO
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:633] ========================================
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:653] Registering signal handlers...
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:665] Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:167] Framework initialized successfully!
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:168] =================================================
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:224] Registered shutdown hook #1
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:630] Async spdlog initialized successfully!
-[2026-01-08 16:29:58.791] [info] [180541] [mprpcapplication.cpp:631]   Mode: Async (Non-blocking)
-[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
-[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
-[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
-[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:70]   Root Path: /mprpc
-[2026-01-08 16:29:58.792] [info] [180541] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
-[2026-01-08 16:29:58.794] [info] [180548] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
-[2026-01-08 16:29:58.794] [info] [180548] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
-[2026-01-08 16:29:58.794] [info] [180541] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
-[2026-01-08 16:29:58.794] [info] [180541] [mprpcapplication.cpp:224] Registered shutdown hook #2
-[2026-01-08 16:29:58.794] [info] [180541] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
-[2026-01-08 16:29:58.794] [info] [180541] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
-[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:522] [ConnPool] Initializing connection pool to 127.0.0.1:8000 with 4 connections.
-[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:175] [Conn-0] Connected to 127.0.0.1:8000
-[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 0
-[2026-01-08 16:29:58.794] [info] [180541] [rpcclient.cpp:175] [Conn-1] Connected to 127.0.0.1:8000
-[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 1
-[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:175] [Conn-2] Connected to 127.0.0.1:8000
-[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 2
-[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:175] [Conn-3] Connected to 127.0.0.1:8000
-[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:531] [ConnPool] Successfully created connection 3
-[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:298] [Conn-0] Receive thread started.
-[2026-01-08 16:29:58.795] [info] [180541] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
-[2026-01-08 16:29:58.795] [info] [180541] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
-[2026-01-08 16:29:58.795] [info] [180541] [rpcclient.cpp:298] [Conn-1] Receive thread started.
-[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] 检查完毕日志是否可用：1
-[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] [MprpcApplication] 触发优雅shutdown机制，开始逆序调用shutdown hooks...
-[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] 开始 shutdown hooks，需要执行的hook数量：2
-[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:2
-[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] Closing zookeeper handle...
-[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:133] [ZkClient] Shutdown hook triggered.
-[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:175] [ZkClient] 正在执行 Stop 操作...
-[2026-01-08 16:29:58.796] [info] [180541] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] ZooKeeper 连接已安全关闭.
-[2026-01-08 16:29:58.796] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:1
-[2026-01-08 16:29:58.796] [info] [180541] [rpcclient.cpp:602] [MprpcChannel] Shutdown hook triggered.
-[2026-01-08 16:29:58.796] [info] [180541] [rpcclient.cpp:626] [MprpcChannel] Shutting down...
-[2026-01-08 16:29:59.793] [info] [180541] [rpcclient.cpp:646] [MprpcChannel] MprpcChannel Shutdown 完毕
-[2026-01-08 16:29:59.793] [info] [180541] [mprpcapplication.cpp:271] [MprpcApplication] MprpcApplication Shutdown complete.
-
+基础测试日志：
 [2026-01-08 16:48:25.042] [info] [185230] [mprpcapplication.cpp:629] ========================================
 [2026-01-08 16:48:25.042] [info] [185230] [mprpcapplication.cpp:630] Async spdlog initialized successfully!
 [2026-01-08 16:48:25.043] [info] [185230] [mprpcapplication.cpp:631]   Mode: Async (Non-blocking)
@@ -283,6 +236,7 @@
 [2026-01-08 16:48:25.125] [info] [185230] [rpcclient.cpp:626] [MprpcChannel] Shutting down...
 [2026-01-08 16:48:26.043] [info] [185230] [rpcclient.cpp:646] [MprpcChannel] MprpcChannel Shutdown 完毕
 [2026-01-08 16:48:26.043] [info] [185230] [mprpcapplication.cpp:271] [MprpcApplication] MprpcApplication Shutdown complete.
+
 [2026-01-08 17:05:17.260] [info] [190543] [mprpcapplication.cpp:629] ========================================
 [2026-01-08 17:05:17.260] [info] [190543] [mprpcapplication.cpp:632]   Log Level: INFO
 [2026-01-08 17:05:17.260] [info] [190543] [mprpcapplication.cpp:633] ========================================
@@ -390,6 +344,8 @@
 [2026-01-08 17:05:17.269] [info] [190543] [rpcclient.cpp:626] [MprpcChannel] Shutting down...
 [2026-01-08 17:05:18.260] [info] [190543] [rpcclient.cpp:646] [MprpcChannel] MprpcChannel Shutdown 完毕
 [2026-01-08 17:05:18.260] [info] [190543] [mprpcapplication.cpp:271] [MprpcApplication] MprpcApplication Shutdown complete.
+
+集群测试：
 [2026-01-08 18:49:11.402] [info] [216736] [mprpcapplication.cpp:629] ========================================
 [2026-01-08 18:49:11.402] [info] [216736] [mprpcapplication.cpp:632]   Log Level: INFO
 [2026-01-08 18:49:11.402] [info] [216736] [mprpcapplication.cpp:633] ========================================
@@ -506,3 +462,130 @@
 [2026-01-08 18:49:11.410] [info] [216736] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] Closing zookeeper handle...
 [2026-01-08 18:49:12.402] [info] [216736] [rpcclient.cpp:646] [MprpcChannel] MprpcChannel Shutdown 完毕
 [2026-01-08 18:49:12.402] [info] [216736] [mprpcapplication.cpp:271] [MprpcApplication] MprpcApplication Shutdown complete.
+
+
+健壮性测试：
+
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:630] Async spdlog initialized successfully!
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:631]   Mode: Async (Non-blocking)
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:632]   Log Level: INFO
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:633] ========================================
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:629] ========================================
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:167] Framework initialized successfully!
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:653] Registering signal handlers...
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:224] Registered shutdown hook #1
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:665] Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)
+[2026-01-08 19:04:06.450] [info] [221903] [mprpcapplication.cpp:168] =================================================
+[2026-01-08 19:04:06.450] [info] [221903] [zookeeperutil.cpp:67] [ZkClient] Initialized with config:
+[2026-01-08 19:04:06.450] [info] [221903] [zookeeperutil.cpp:68]   Host: 127.0.0.1:2181
+[2026-01-08 19:04:06.450] [info] [221903] [zookeeperutil.cpp:69]   Session Timeout: 6000 ms
+[2026-01-08 19:04:06.450] [info] [221903] [zookeeperutil.cpp:70]   Root Path: /mprpc
+[2026-01-08 19:04:06.450] [info] [221903] [zookeeperutil.cpp:95] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 19:04:06.452] [info] [221910] [zookeeperutil.cpp:622] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 19:04:06.452] [info] [221910] [zookeeperutil.cpp:628] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 19:04:06.453] [info] [221903] [zookeeperutil.cpp:123] [ZkClient] Connected successfully!
+[2026-01-08 19:04:06.453] [info] [221903] [mprpcapplication.cpp:224] Registered shutdown hook #2
+[2026-01-08 19:04:06.453] [info] [221903] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:06.453] [info] [221903] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:522] [ConnPool] Initializing connection pool to 127.0.0.1:8000 with 4 connections.
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:175] [Conn-0] Connected to 127.0.0.1:8000
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:531] [ConnPool] Successfully created connection 0
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:175] [Conn-1] Connected to 127.0.0.1:8000
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:531] [ConnPool] Successfully created connection 1
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:175] [Conn-2] Connected to 127.0.0.1:8000
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:531] [ConnPool] Successfully created connection 2
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:175] [Conn-3] Connected to 127.0.0.1:8000
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:531] [ConnPool] Successfully created connection 3
+[2026-01-08 19:04:06.453] [info] [221903] [rpcclient.cpp:298] [Conn-0] Receive thread started.
+[2026-01-08 19:04:06.454] [info] [221903] [zookeeperutil.cpp:458] [ZkClient] Got 1 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:06.454] [info] [221903] [zookeeperutil.cpp:533] [ZkClient] Found 1 instances for service: UserServiceRpc
+[2026-01-08 19:04:06.454] [info] [221903] [rpcclient.cpp:298] [Conn-1] Receive thread started.
+[2026-01-08 19:04:06.454] [info] [221903] [consumer.cpp:132] Tests finished. Sleeping for 10 seconds before exit...
+[2026-01-08 19:04:11.319] [error] [221911] [rpcclient.cpp:399] [Conn-0] Connection closed by peer.
+[2026-01-08 19:04:11.319] [error] [221911] [rpcclient.cpp:324] [Conn-0] Connection closed/error, waiting for retry...
+[2026-01-08 19:04:11.320] [error] [221912] [rpcclient.cpp:399] [Conn-1] Connection closed by peer.
+[2026-01-08 19:04:11.320] [error] [221912] [rpcclient.cpp:324] [Conn-1] Connection closed/error, waiting for retry...
+[2026-01-08 19:04:12.319] [info] [221911] [rpcclient.cpp:373] [Conn-0] Receive thread exited.
+[2026-01-08 19:04:12.320] [info] [221912] [rpcclient.cpp:373] [Conn-1] Receive thread exited.
+[2026-01-08 19:04:16.455] [info] [222030] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.455] [info] [222030] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222031] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222031] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222033] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222032] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222034] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222037] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222036] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222035] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222049] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222039] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222040] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222046] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222043] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222042] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222041] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222045] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222038] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222047] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222048] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222033] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222032] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222044] [zookeeperutil.cpp:458] [ZkClient] Got 0 children for node: /mprpc/UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222034] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.456] [info] [222037] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222035] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222039] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222040] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222046] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222043] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222041] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222045] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222044] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222038] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222047] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222036] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222042] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222048] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [222049] [zookeeperutil.cpp:533] [ZkClient] Found 0 instances for service: UserServiceRpc
+[2026-01-08 19:04:16.457] [info] [221903] [mprpcapplication.cpp:271] [MprpcApplication] 检查完毕日志是否可用：1
+[2026-01-08 19:04:16.457] [info] [221903] [mprpcapplication.cpp:271] [MprpcApplication] 开始 shutdown hooks，需要执行的hook数量：2
+[2026-01-08 19:04:16.457] [info] [221903] [mprpcapplication.cpp:271] [MprpcApplication] [MprpcApplication] 触发优雅shutdown机制，开始逆序调用shutdown hooks...
+[2026-01-08 19:04:16.457] [info] [221903] [zookeeperutil.cpp:133] [ZkClient] Shutdown hook triggered.
+[2026-01-08 19:04:16.457] [info] [221903] [zookeeperutil.cpp:175] [ZkClient] 正在执行 Stop 操作...
+[2026-01-08 19:04:16.457] [info] [221903] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] Closing zookeeper handle...
+[2026-01-08 19:04:16.457] [info] [221903] [zookeeperutil.cpp:175] [ZkClient] [ZkClient] ZooKeeper 连接已安全关闭.
+[2026-01-08 19:04:16.457] [info] [221903] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:1
+[2026-01-08 19:04:16.457] [info] [221903] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:2
+[2026-01-08 19:04:16.457] [info] [221903] [rpcclient.cpp:602] [MprpcChannel] Shutdown hook triggered.
+[2026-01-08 19:04:16.457] [info] [221903] [rpcclient.cpp:626] [MprpcChannel] Shutting down...
+[2026-01-08 19:04:17.451] [info] [221903] [rpcclient.cpp:646] [MprpcChannel] MprpcChannel Shutdown 完毕
+[2026-01-08 19:04:17.451] [info] [221903] [mprpcapplication.cpp:271] [MprpcApplication] MprpcApplication Shutdown complete.
+健壮性测试终端输出：
+[PASS] Login Rpc Success! Authorized
+[PASS] Register Rpc Success! Registered ID: 2000
+[2026-01-08 19:05:36.151] [error] [222495] [Conn-1] Connection closed by peer.
+[2026-01-08 19:05:36.151] [error] [222494] [Conn-0] Connection closed by peer.
+[2026-01-08 19:05:36.151] [error] [222494] [Conn-0] Connection closed/error, waiting for retry...
+[2026-01-08 19:05:36.151] [error] [222495] [Conn-1] Connection closed/error, waiting for retry...
+>>> Testing Concurrency (20 threads) <<<
+[Thread [Thread [Thread [Thread 1] Failed: No service provider found for: UserServiceRpc
+2] Failed: No service provider found for: UserServiceRpc
+0] Failed: No service provider found for: UserServiceRpc
+3] Failed: No service provider found for: UserServiceRpc
+[Thread 4] Failed: No service provider found for: UserServiceRpc
+[Thread 10] Failed: No service provider found for: UserServiceRpc
+[Thread 12] Failed: No service provider found for: UserServiceRpc
+[Thread 14] Failed: No service provider found for: UserServiceRpc
+[Thread 16] Failed: No service provider found for: UserServiceRpc
+[Thread 13] Failed: No service provider found for: UserServiceRpc
+[Thread 15] Failed: No service provider found for: UserServiceRpc
+[Thread 17] Failed: No service provider found for: UserServiceRpc
+[Thread 11] Failed: No service provider found for: UserServiceRpc
+[Thread 6] Failed: No service provider found for: UserServiceRpc
+[Thread 7] Failed: No service provider found for: UserServiceRpc
+[Thread 8] Failed: No service provider found for: UserServiceRpc
+[Thread 5] Failed: No service provider found for: UserServiceRpc
+[Thread 9] Failed: No service provider found for: UserServiceRpc
+[Thread 18] Failed: No service provider found for: UserServiceRpc
+[Thread 19] Failed: No service provider found for: UserServiceRpc
+[PASS] Concurrency Test Finished

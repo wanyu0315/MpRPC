@@ -3,6 +3,8 @@
 #include <thread>
 #include <vector>
 #include <cstdlib> // for atoi
+#include <thread> // 提供 std::this_thread::sleep_for
+#include <chrono> // 提供时间单位，如 std::chrono::seconds
 
 #include <mprpc/mprpcapplication.h>
 #include <mprpc/rpcclient.h> // 包含 MprpcChannel 和 RpcClientConfig
@@ -125,8 +127,12 @@ int main(int argc, char **argv) {
     MprpcChannel channel("", 0, client_config); // 会创建一个全局的 ZKClient 实例
 
     // 3. 执行测试用例
-    TestZkDiscoveryMode(channel);
-    TestConcurrency(channel);
+    TestZkDiscoveryMode(channel);   // ZK 服务发现模式测试
+
+    LOG_INFO("Tests finished. Sleeping for 10 seconds before exit..."); // 暂停10秒，测试健壮性
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+
+    TestConcurrency(channel);   // 并发压力测试
 
     // 4. 显式清理全局单例
     MprpcApplication::GetInstance().Shutdown();
