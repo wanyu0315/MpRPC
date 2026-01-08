@@ -153,16 +153,16 @@ void ZkClient::Stop() {
   // 辅助 lambda：安全打印日志：如果 logger 挂了，就用 std::cout/cerr 打印
   auto safe_log = [&](const std::string& msg, bool is_error = false) {
       if (logger_alive) {
-          if (is_error) LOG_ERROR("{}", msg);
-          else LOG_INFO("{}", msg);
+          if (is_error) LOG_ERROR("[ZkClient] {}", msg);
+          else LOG_INFO("[ZkClient] {}", msg);
       } else {
           // 如果 logger 挂了，降级到 std::cout/cerr
-          if (is_error) std::cerr << "[MprpcApplication] Error: " << msg << std::endl;
-          else std::cout << "[MprpcApplication] " << msg << std::endl;
+          if (is_error) std::cerr << "[ZkClient] Error: " << msg << std::endl;
+          else std::cout << "[ZkClient] " << msg << std::endl;
       }
   };
 
-  std::cout << "检查完毕日志是否可用：" << logger_alive << std::endl;
+  safe_log("检查完毕日志是否可用：" + std::to_string(logger_alive), false);
 
   // 2. 关闭连接
   if (zk_handle_ != nullptr) {
