@@ -295,7 +295,7 @@ void RpcConnection::StartReceiveThread(std::function<void(uint64_t, int32_t, con
     // 标记为已运行
     thread_is_running_ = true;
 
-    LOG_INFO("[Conn-{}] Receive thread started.", id_);
+    LOG_INFO("[Conn-{}] Receive thread first started.", id_);
 }
 
 void RpcConnection::StopReceiveThread() {

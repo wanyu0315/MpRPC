@@ -46,7 +46,7 @@ MprpcApplication::MprpcApplication()
 MprpcApplication::~MprpcApplication() {
   // ========== 完成所有业务清理 ==========
   if (!s_shutting_down_) {
-    std::cout << "\n[MprpcApplication] 开始析构..." << std::endl;
+    LOG_INFO("[MprpcApplication] MprpcApplication 开始析构");
     Shutdown();
   }
 
@@ -221,10 +221,11 @@ int MprpcApplication::RegisterShutdownHook(std::function<void()> hook) {// 传�
   int hook_id = next_hook_id_++;
   shutdown_hooks_.emplace_back(hook_id, hook); // 存入 ID — 函数对象
   
-  LOG_INFO("Registered shutdown hook #{}", hook_id);
+  LOG_INFO("注册 shutdown hook ，注册的 hook_id 是{}", hook_id);
   // std::cout << "[MprpcApplication] Registered shutdown hook #" << hook_id << std::endl;
   return hook_id;
 }
+
 
 /**
  * @brief 取消注册关闭钩子
@@ -238,8 +239,7 @@ void MprpcApplication::UnregisterShutdownHook(int hook_id) {
   
   if (it != shutdown_hooks_.end()) {
     shutdown_hooks_.erase(it);
-    LOG_INFO("Unregistered shutdown hook , id is{}", hook_id);
-    // std::cout << "[MprpcApplication] Unregistered shutdown hook #" << hook_id << std::endl;
+    LOG_INFO("注销 shutdown hook , 被注销 hook_id 是{}", hook_id);
   }
 }
 
@@ -293,8 +293,9 @@ void MprpcApplication::Shutdown() {
     }
   }
 
-  safe_log("Shutdown complete.");
+  safe_log("MprpcApplication Shutdown complete.");
 }
+
 
 /**
  * @brief 检查是否正在关闭
