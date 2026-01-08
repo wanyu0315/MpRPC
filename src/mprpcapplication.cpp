@@ -238,10 +238,11 @@ void MprpcApplication::UnregisterShutdownHook(int hook_id) {
   
   if (it != shutdown_hooks_.end()) {
     shutdown_hooks_.erase(it);
-    LOG_INFO("Unregistered shutdown hook #{}", hook_id);
+    LOG_INFO("Unregistered shutdown hook , id is{}", hook_id);
     // std::cout << "[MprpcApplication] Unregistered shutdown hook #" << hook_id << std::endl;
   }
 }
+
 
 /**
  * @brief 触发优雅关闭
@@ -266,8 +267,8 @@ void MprpcApplication::Shutdown() {
   // 辅助 lambda：安全打印日志：如果 logger 挂了，就用 std::cout/cerr 打印
   auto safe_log = [&](const std::string& msg, bool is_error = false) {
       if (logger_alive) {
-          if (is_error) LOG_ERROR("{}", msg);
-          else LOG_INFO("{}", msg);
+          if (is_error) LOG_ERROR("[MprpcApplication] {}", msg);
+          else LOG_INFO("[MprpcApplication] {}", msg);
       } else {
           // 如果 logger 挂了，降级到 std::cout/cerr
           if (is_error) std::cerr << "[MprpcApplication] Error: " << msg << std::endl;
@@ -275,8 +276,8 @@ void MprpcApplication::Shutdown() {
       }
   };
 
-  std::cout << "检查完毕日志是否可用：" << logger_alive << std::endl;
-  safe_log("Shutting down gracefully..."); 
+  safe_log("检查完毕日志是否可用：" + std::to_string(logger_alive), false);
+  safe_log("[MprpcApplication] 触发优雅shutdown机制，开始逆序调用shutdown hooks..."); 
 
   // 3. 逆序调用关闭钩子（类似于栈的 LIFO 顺序）
   {
@@ -284,10 +285,10 @@ void MprpcApplication::Shutdown() {
     safe_log("开始 shutdown hooks，需要执行的hook数量：" + std::to_string(shutdown_hooks_.size()), false);
     for (auto it = shutdown_hooks_.rbegin(); it != shutdown_hooks_.rend(); ++it) {
       try {
-        safe_log("Executing shutdown hook #" + std::to_string(it->first), false);
+        safe_log("Executing shutdown hook, the id is:" + std::to_string(it->first), false);
         it->second(); // 执行回调
       } catch (const std::exception& e) {
-        safe_log("Exception in shutdown hook #" + std::to_string(it->first) + ": " + e.what(), true);
+        safe_log("Exception in shutdown hook the id is:" + std::to_string(it->first) + ": " + e.what(), true);
       }
     }
   }

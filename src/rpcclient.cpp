@@ -371,6 +371,7 @@ void RpcConnection::ReceiveLoop() {
         }
     }
     LOG_INFO("[Conn-{}] Receive thread exited.", id_);
+
 }
 
 /**
@@ -605,8 +606,9 @@ MprpcChannel::MprpcChannel(const std::string& ip, uint16_t port,
 
 MprpcChannel::~MprpcChannel() {
     // 注销钩子 & 执行关闭
-    // 如果对象是正常析构的，必须把钩子摘掉，否则 App 退出时会回调野指针
+    // 如果对象是提前正常析构的，必须把钩子摘掉，否则 App 退出时会回调野指针
     if (shutdown_hook_id_ >= 0) {
+        LOG_INFO("[MprpcChannel] 在MprpcApplication之前析构，注销钩子避免野指针.");
         MprpcApplication::GetInstance().UnregisterShutdownHook(shutdown_hook_id_);
     }
     
@@ -621,6 +623,8 @@ MprpcChannel::~MprpcChannel() {
 * 停止超时检查线程，停止所有连接池的线程
 */
 void MprpcChannel::Shutdown() {
+    LOG_INFO("[MprpcChannel] Shutting down...");
+    
     // 1. 停止超时检查线程
     if (!stop_timeout_checker_) { // 简单的状态检查，防止重复 join
         stop_timeout_checker_ = true;
