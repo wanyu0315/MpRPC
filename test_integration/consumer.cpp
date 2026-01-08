@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
     MprpcChannel channel("", 0, client_config); // 会创建一个全局的 ZKClient 实例
 
     // 3. 执行测试用例
-    // TestZkDiscoveryMode(channel);
+    TestZkDiscoveryMode(channel);
     TestConcurrency(channel);
 
     // 4. 显式清理全局单例
@@ -134,40 +134,3 @@ int main(int argc, char **argv) {
 
     _exit(0);
 }
-
-// // ==========================================================
-// // 场景 2: 直连模式 (Direct Connect)
-// // 适用于调试或已知目标地址的情况
-// // ==========================================================
-// void TestDirectConnectMode(const RpcClientConfig& client_config) {
-//     std::cout << "\n>>> Testing Direct Connect Mode <<<" << std::endl;
-
-//     // 从配置文件手动读取目标 IP 和 Port (假设我们也部署在本地)
-//     std::string ip = MprpcApplication::GetInstance().GetConfig().Load("rpcserver_ip");
-//     uint16_t port = atoi(MprpcApplication::GetInstance().GetConfig().Load("rpcserver_port").c_str());
-
-//     if (ip.empty() || port == 0) {
-//         std::cout << "[SKIP] Direct Connect Mode skipped (no rpcserver_ip/port config)" << std::endl;
-//         return;
-//     }
-
-//     // 1. 显式指定 IP 和 Port
-//     MprpcChannel channel(ip, port, client_config);
-
-//     // 2. 创建 Stub
-//     fixbug::UserServiceRpc_Stub stub(&channel);
-
-//     // 3. 简单的 Ping 测试 (Login)
-//     fixbug::LoginRequest req;
-//     req.set_name("direct_user");
-//     req.set_pwd("direct_pwd");
-//     fixbug::LoginResponse resp;
-//     MprpcController cntl;
-
-//     stub.Login(&cntl, &req, &resp, nullptr);
-
-//     PrintResult("Direct Login", 
-//                 cntl.Failed(), 
-//                 cntl.ErrorText(), 
-//                 resp.result().errcode() == 0);
-// }

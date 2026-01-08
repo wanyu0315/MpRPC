@@ -726,3 +726,27 @@
 [2026-01-08 16:48:26.046] [info] [185179] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:40990 , active: 2
 [2026-01-08 16:48:26.046] [info] [185177] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:40986 , active: 1
 [2026-01-08 16:48:26.046] [info] [185178] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:40988 , active: 0
+[2026-01-08 17:05:17.263] [info] [185177] [rpcprovider.cpp:347] Connection established: 127.0.0.1:48600 , active: 1
+[2026-01-08 17:05:17.263] [info] [185178] [rpcprovider.cpp:347] Connection established: 127.0.0.1:48610 , active: 2
+[2026-01-08 17:05:17.263] [info] [185179] [rpcprovider.cpp:347] Connection established: 127.0.0.1:48612 , active: 3
+[2026-01-08 17:05:17.264] [info] [185180] [rpcprovider.cpp:347] Connection established: 127.0.0.1:48622 , active: 4
+[2026-01-08 17:05:18.262] [info] [185180] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:48622 , active: 3
+[2026-01-08 17:05:18.262] [info] [185178] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:48610 , active: 2
+[2026-01-08 17:05:18.262] [info] [185177] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:48600 , active: 1
+[2026-01-08 17:05:18.264] [info] [185179] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:48612 , active: 0
+[2026-01-08 17:16:57.657] [info] [185172] [mprpcapplication.cpp:271] [MprpcApplication] 检查完毕日志是否可用：1
+[2026-01-08 17:16:57.657] [info] [185172] [mprpcapplication.cpp:271] [MprpcApplication] [MprpcApplication] 触发优雅shutdown机制，开始逆序调用shutdown hooks...
+[2026-01-08 17:16:57.657] [info] [185172] [mprpcapplication.cpp:271] [MprpcApplication] 开始 shutdown hooks，需要执行的hook数量：2
+[2026-01-08 17:16:57.657] [info] [185172] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:2
+[2026-01-08 17:16:57.657] [info] [185172] [zookeeperutil.cpp:128] [ZkClient] Shutdown hook triggered.
+[2026-01-08 17:16:57.657] [info] [185172] [zookeeperutil.cpp:174] [ZkClient] 正在执行 Stop 操作...
+[2026-01-08 17:16:57.657] [info] [185172] [zookeeperutil.cpp:174] [ZkClient] 正在关闭 ZooKeeper 连接句柄...
+[2026-01-08 17:16:57.658] [info] [185172] [zookeeperutil.cpp:174] [ZkClient] ZooKeeper 连接已安全关闭
+[2026-01-08 17:16:57.658] [info] [185172] [mprpcapplication.cpp:271] [MprpcApplication] Executing shutdown hook, the id is:1
+[2026-01-08 17:16:57.658] [info] [185172] [rpcprovider.cpp:281] MprpcApplication triggered shutdown, stopping RpcProvider...
+[2026-01-08 17:16:57.658] [info] [185172] [rpcprovider.cpp:135] RpcProvider shutting down...
+[2026-01-08 17:16:57.658] [info] [185172] [rpcprovider.cpp:142] [Shutdown Step 1] Unregistering from Zookeeper...
+[2026-01-08 17:16:57.658] [info] [185172] [rpcprovider.cpp:152] [Shutdown Step 2] Waiting for pending requests...
+[2026-01-08 17:16:57.658] [info] [185172] [rpcprovider.cpp:167] All requests finished.
+[2026-01-08 17:16:57.658] [info] [185172] [rpcprovider.cpp:190] RpcProvider shutdown complete. Stats - Total: 38, Failed: 0, Partial: 35
+[2026-01-08 17:16:57.658] [info] [185172] [mprpcapplication.cpp:271] [MprpcApplication] Shutdown complete.
