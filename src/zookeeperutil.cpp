@@ -47,10 +47,10 @@ ZkClient& ZkClient::GetInstance() {
   // 使用 new 创建堆对象，并且永远不 delete 它
   // 这样程序退出时，~ZkClient() 永远不会被执行
   // 从而避免了 "main 结束后再次调用 Stop()" 的问题
-  static ZkClient* instance = new ZkClient();
-  return *instance;
-  // static ZkClient instance;
-  // return instance;
+  // static ZkClient* instance = new ZkClient();
+  // return *instance;
+  static ZkClient instance;
+  return instance;
 }
 
 // ============================================================================
