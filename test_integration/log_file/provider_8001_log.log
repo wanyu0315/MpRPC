@@ -1,0 +1,37 @@
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:629] Async spdlog initialized successfully!
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:631]   Log Level: INFO
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:632] ========================================
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:652] Registering signal handlers...
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:664] Signal handlers registered (SIGINT, SIGTERM, SIGQUIT)
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:167] Framework initialized successfully!
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:168] =================================================
+[2026-01-08 18:48:54.748] [info] [216605] [rpcprovider.cpp:90] RpcProvider initialized: ip=127.0.0.1, port=8001, threads=4, max_msg_size=10485760
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:628] ========================================
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:630]   Mode: Async (Non-blocking)
+[2026-01-08 18:48:54.748] [info] [216605] [rpcprovider.cpp:228] Registered method: UserServiceRpc.Login,
+[2026-01-08 18:48:54.748] [info] [216605] [rpcprovider.cpp:228] Registered method: UserServiceRpc.Register,
+[2026-01-08 18:48:54.748] [info] [216605] [rpcprovider.cpp:232] Service registered: UserServiceRpc with 2 methods
+[2026-01-08 18:48:54.748] [info] [216605] [rpcprovider.cpp:277] RpcProvider starting at 127.0.0.1:8001 with 4 threads
+[2026-01-08 18:48:54.748] [info] [216605] [mprpcapplication.cpp:224] Registered shutdown hook #1
+[2026-01-08 18:48:54.748] [info] [216605] [zookeeperutil.cpp:62] [ZkClient] Initialized with config:
+[2026-01-08 18:48:54.748] [info] [216605] [zookeeperutil.cpp:63]   Host: 127.0.0.1:2181
+[2026-01-08 18:48:54.749] [info] [216605] [zookeeperutil.cpp:64]   Session Timeout: 30000 ms
+[2026-01-08 18:48:54.749] [info] [216605] [zookeeperutil.cpp:65]   Root Path: /mprpc
+[2026-01-08 18:48:54.749] [info] [216605] [zookeeperutil.cpp:90] [ZkClient] Connecting to ZooKeeper: 127.0.0.1:2181
+[2026-01-08 18:48:54.751] [info] [216615] [zookeeperutil.cpp:695] [ZkClient] Watcher event: type=-1 , state=3 , path=
+[2026-01-08 18:48:54.751] [info] [216615] [zookeeperutil.cpp:701] [ZkClient] Connected to ZooKeeper server.
+[2026-01-08 18:48:54.751] [info] [216605] [zookeeperutil.cpp:118] [ZkClient] Connected successfully!
+[2026-01-08 18:48:54.751] [info] [216605] [mprpcapplication.cpp:224] Registered shutdown hook #2
+[2026-01-08 18:48:54.751] [info] [216605] [zookeeperutil.cpp:559] [ZkClient] Registering service: /mprpc/UserServiceRpc/127.0.0.1:8001
+[2026-01-08 18:48:54.753] [info] [216605] [zookeeperutil.cpp:369] [ZkClient] Node created: /mprpc/UserServiceRpc/127.0.0.1:8001
+[2026-01-08 18:48:54.753] [info] [216605] [zookeeperutil.cpp:576] [ZkClient] Service registered successfully: /mprpc/UserServiceRpc/127.0.0.1:8001
+[2026-01-08 18:48:54.753] [info] [216605] [rpcprovider.cpp:313] Successfully registered service to ZK: UserServiceRpc -> 127.0.0.1:8001
+[2026-01-08 18:48:54.753] [info] [216605] [rpcprovider.cpp:322] RpcProvider enter event loop...
+[2026-01-08 18:49:11.405] [info] [216610] [rpcprovider.cpp:347] Connection established: 127.0.0.1:51466 , active: 2
+[2026-01-08 18:49:11.405] [info] [216611] [rpcprovider.cpp:347] Connection established: 127.0.0.1:51478 , active: 1
+[2026-01-08 18:49:11.405] [info] [216612] [rpcprovider.cpp:347] Connection established: 127.0.0.1:51484 , active: 3
+[2026-01-08 18:49:11.405] [info] [216613] [rpcprovider.cpp:347] Connection established: 127.0.0.1:51496 , active: 4
+[2026-01-08 18:49:12.405] [info] [216613] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:51496 , active: 3
+[2026-01-08 18:49:12.405] [info] [216611] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:51478 , active: 2
+[2026-01-08 18:49:12.405] [info] [216612] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:51484 , active: 1
+[2026-01-08 18:49:12.405] [info] [216610] [rpcprovider.cpp:352] Connection closed: 127.0.0.1:51466 , active: 0
