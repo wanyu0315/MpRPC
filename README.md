@@ -38,7 +38,7 @@ cd ~
 #### 第一步：下载源码
 *(请替换为你的真实下载链接)*
 ```Bash
-wget https://github.com/wanyu0315/MpRPC/archive/refs/tags/v1.0.1.zip -O MpRPC.zip
+wget https://github.com/wanyu0315/MpRPC/archive/refs/tags/v1.0.2.zip -O MpRPC.zip
 ```
 
 #### 第二步：解压
