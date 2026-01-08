@@ -643,6 +643,7 @@ void MprpcChannel::Shutdown() {
         // 显式停止，虽然 unique_ptr 析构也会做，但这样更安全
         // conn_pool_.reset(); // 或者什么都不做，依赖析构
     }
+    LOG_INFO("[MprpcChannel] MprpcChannel Shutdown 完毕");
 }
 
 /**

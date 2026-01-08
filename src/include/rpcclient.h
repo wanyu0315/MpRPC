@@ -18,6 +18,7 @@
 #include <functional>
 #include <chrono>
 #include "rpccontroller.h"
+#include "zookeeperutil.h"   
 
 // ============================================================================
 // 配置结构体
