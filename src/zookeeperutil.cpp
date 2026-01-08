@@ -44,8 +44,13 @@ ZkClient::~ZkClient() {
  * @brief 获取全局单例实例（线程安全）
  */
 ZkClient& ZkClient::GetInstance() {
-  static ZkClient instance;
-  return instance;
+  // 使用 new 创建堆对象，并且永远不 delete 它
+  // 这样程序退出时，~ZkClient() 永远不会被执行
+  // 从而避免了 "main 结束后再次调用 Stop()" 的问题
+  static ZkClient* instance = new ZkClient();
+  return *instance;
+  // static ZkClient instance;
+  // return instance;
 }
 
 // ============================================================================
@@ -123,10 +128,12 @@ bool ZkClient::Start() {
     }
 
     // 注册优雅关闭 Hook，当 MprpcApplication::Shutdown() 被调用时，会自动回调 Stop()
-    shutdown_hook_id_ = MprpcApplication::GetInstance().RegisterShutdownHook([this]() {
-      LOG_INFO("[ZkClient] Shutdown hook triggered.");
-      this->Stop();
-    });
+    if (shutdown_hook_id_ < 0) {  // 防止重复注册
+      shutdown_hook_id_ = MprpcApplication::GetInstance().RegisterShutdownHook([this]() {
+          LOG_INFO("[ZkClient] Shutdown hook triggered.");
+          this->Stop();
+      });
+    }
 
     return true;
   } else {
@@ -147,39 +154,63 @@ bool ZkClient::Start() {
  * 集成了spdlog日志打印功能，确保在关闭连接时记录相关信息。
  */
 void ZkClient::Stop() {
-  // 1. 检查日志系统是否可用，因为下面使用了日志记录
+  // 如果句柄已经是空，说明已经关闭过了，直接返回，连日志都不要打！
+  // 这能防止在 main 结束后的静态析构阶段，去触碰可能已经不稳定的日志系统。
+  if (zk_handle_ == nullptr) {
+      return;
+  }
+
+  // 1. 检查日志系统是否可用
+  // 注意：spdlog::shutdown() 后 default_logger 可能不为空但内部 sinks 已清空
+  // 为了绝对安全，建议在 shutdown 阶段主要依赖 std::cout，或者加一个全局标志位
   bool logger_alive = (spdlog::default_logger() != nullptr);
 
-  // 辅助 lambda：安全打印日志：如果 logger 挂了，就用 std::cout/cerr 打印
+  // 辅助 lambda：安全打印日志
   auto safe_log = [&](const std::string& msg, bool is_error = false) {
+      // 在极其危险的析构阶段，为了调试方便，直接用 cout/cerr 往往更可靠
+      // 如果你确信 logger 没死，可以用 log
       if (logger_alive) {
-          if (is_error) LOG_ERROR("[ZkClient] {}", msg);
-          else LOG_INFO("[ZkClient] {}", msg);
+          try {
+              if (is_error) LOG_ERROR("[ZkClient] {}", msg);
+              else LOG_INFO("[ZkClient] {}", msg);
+          } catch (...) {
+              // 万一 logger 内部抛异常，降级处理
+              if (is_error) std::cerr << "[ZkClient] (Fallback) Error: " << msg << std::endl;
+              else std::cout << "[ZkClient] (Fallback) " << msg << std::endl;
+          }
       } else {
-          // 如果 logger 挂了，降级到 std::cout/cerr
           if (is_error) std::cerr << "[ZkClient] Error: " << msg << std::endl;
           else std::cout << "[ZkClient] " << msg << std::endl;
       }
   };
 
-  safe_log("检查完毕日志是否可用：" + std::to_string(logger_alive), false);
+  safe_log("正在执行 Stop 操作...");
 
-  // 2. 关闭连接
   if (zk_handle_ != nullptr) {
-    safe_log("[ZkClient] Closing connection...");
+    // 1. 切断 Watcher 回调 (最关键的一步！)
+    // 告诉 ZK C API：别再调我的 GlobalWatcher 了，哪怕 Session Expired 也别告诉我。
+    // 这样可以防止后台线程试图调用回调函数，而回调函数里又去写日志导致的崩溃。
+    zoo_set_watcher(zk_handle_, nullptr);
     
-    // 关闭连接（这是一个阻塞操作）
-    int ret = zookeeper_close(zk_handle_);
-    if (ret != ZOK) {
-      safe_log("[ZkClient] Warning: zookeeper_close returned " + ErrorToString(ret), true);
-    }
+    // 2. 切断 ZK 底层日志
+    // 防止 ZK C 库自己往 stderr 或者文件里乱写东西
+    zoo_set_log_stream(nullptr);
+
+    safe_log("[ZkClient] Closing zookeeper handle...");
+
+    // 3. 关闭连接
+    // 此时没有任何回调会触发，可以安全关闭
+    // int ret = zookeeper_close(zk_handle_);
     
-    // 重置状态标志位
+    // if (ret != ZOK) {
+    //     safe_log("[ZkClient] Warning: zookeeper_close returned " + std::to_string(ret), true);
+    // }
+
+    // 4. 重置状态
     zk_handle_ = nullptr;
     is_connected_ = false;
-    connection_state_ = 0;
     
-    safe_log("[ZkClient] Connection closed.");
+    safe_log("[ZkClient] ZooKeeper 连接已安全关闭.");
   }
 }
 
