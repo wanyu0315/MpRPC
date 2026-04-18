@@ -5,6 +5,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -14,6 +15,7 @@
 #include <algorithm>
 #include <iostream>
 #include <atomic>
+#include <sstream>
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -61,6 +63,17 @@ static bool PeekVarint32FromString(const std::string& buffer,
   // 记录这个 varint 实际占用的字节数
   varint_size = coded_input.CurrentPosition();
   return true;
+}
+
+static std::string GenerateFallbackClientId() {
+    char hostname[256] = {0};
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+        std::snprintf(hostname, sizeof(hostname), "unknown-host");
+    }
+
+    std::ostringstream oss;
+    oss << hostname << "-" << getpid();
+    return oss.str();
 }
 
 // ============================================================================
@@ -165,13 +178,42 @@ bool RpcConnection::Connect() {
     fcntl(client_fd, F_SETFL, flags);
     
     // 6. 设置读写超时 (防止死锁)
-    struct timeval timeout;
-    timeout.tv_sec = config_.rpc_timeout_ms / 1000;
-    timeout.tv_usec = (config_.rpc_timeout_ms % 1000) * 1000;
-    setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)); // 设置接收超时
-    setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)); // 设置发送超时
+    int recv_timeout_ms = config_.rpc_timeout_ms;
+    if (config_.enable_heartbeat) {
+        recv_timeout_ms = std::max(200, std::min(config_.rpc_timeout_ms, config_.heartbeat_interval_ms));
+    }
+
+    struct timeval recv_timeout;
+    recv_timeout.tv_sec = recv_timeout_ms / 1000;
+    recv_timeout.tv_usec = (recv_timeout_ms % 1000) * 1000;
+    setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout));
+
+    struct timeval send_timeout;
+    send_timeout.tv_sec = config_.rpc_timeout_ms / 1000;
+    send_timeout.tv_usec = (config_.rpc_timeout_ms % 1000) * 1000;
+    setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
+
+    int keepalive = 1;
+    setsockopt(client_fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
+#ifdef TCP_KEEPIDLE
+    int keepidle = std::max(1, config_.heartbeat_timeout_ms / 1000);
+    setsockopt(client_fd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle));
+#endif
+#ifdef TCP_KEEPINTVL
+    int keepintvl = std::max(1, config_.heartbeat_interval_ms / 1000);
+    setsockopt(client_fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
+#endif
+#ifdef TCP_KEEPCNT
+    int keepcnt = 3;
+    setsockopt(client_fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt));
+#endif
 
     fd_ = client_fd;
+    const int64_t now_ms = NowMs();
+    last_send_ms_.store(now_ms);
+    last_receive_ms_.store(now_ms);
+    last_heartbeat_sent_ms_.store(0);
+    waiting_for_heartbeat_ack_.store(false);
     LOG_INFO("[Conn-{}] Connected to {}:{}", id_, ip_, port_);
     // std::cout << "[Conn-" << id_ << "] Connected to " << ip_ << ":" << port_ << std::endl;
     return true;
@@ -182,6 +224,7 @@ void RpcConnection::Close() {
         close(fd_);
         fd_ = -1;
     }
+    waiting_for_heartbeat_ack_.store(false);
 }
 
 /**
@@ -240,34 +283,39 @@ bool RpcConnection::SendRequest(uint64_t request_id,
     }
 
     // 4. 构造完整的请求帧：[Varint32: header_size] + [Header] + [Args]
-    std::string send_buffer;
-    {
-        google::protobuf::io::StringOutputStream string_output(&send_buffer); // 将 string 包装成 protobuf 支持的输出流
-        google::protobuf::io::CodedOutputStream coded_output(&string_output); // 给“流”增加了“编码能力”和“缓冲能力”
-        
-        // 写入 header 长度（varint 编码，占 1-5 字节）
-        coded_output.WriteVarint32(header_str.size());
-        // CodedOutputStream 析构时会自动 flush，coded_output会让适配器string_output赶紧取走数据（header长度）
-    }
-    
-    // 追加 header 和 args
-    send_buffer.append(header_str);
-    send_buffer.append(args_str);
+    header.set_message_type(RPC::REQUEST);
+    header.set_client_id(config_.client_id);
 
-    // 5. 发送数据（循环发送，处理部分发送的情况）
-    size_t total_sent = 0;
-    while (total_sent < send_buffer.size()) {
-        ssize_t sent = send(fd_, send_buffer.data() + total_sent,
-                            send_buffer.size() - total_sent, 0);
-        if (sent <= 0) {
-            controller->SetFailed(std::string("Send failed: ") + strerror(errno));
-            failed_requests_++;
-            Close(); // 发送失败视为连接断开
-            return false;
-        }
-        total_sent += sent;
+    TrackInflightRequest(request_id);
+    if (!SendFrame(header, args_str, controller, "rpc request")) {
+        RemoveInflightRequest(request_id);
+        FailInflightRequests("Connection send failed");
+        return false;
     }
+    waiting_for_heartbeat_ack_.store(false);
     total_requests_++;
+    return true;
+}
+
+bool RpcConnection::SendHeartbeat() {
+    if (!config_.enable_heartbeat || fd_ == -1) {
+        return false;
+    }
+
+    RPC::RpcHeader header;
+    header.set_request_id(0);
+    header.set_error_code(0);
+    header.set_args_size(0);
+    header.set_message_type(RPC::HEARTBEAT);
+    header.set_client_id(config_.client_id);
+
+    if (!SendFrame(header, "", nullptr, "heartbeat")) {
+        FailInflightRequests("Heartbeat send failed");
+        return false;
+    }
+
+    last_heartbeat_sent_ms_.store(NowMs());
+    waiting_for_heartbeat_ack_.store(true);
     return true;
 }
 
@@ -286,6 +334,10 @@ void RpcConnection::StartReceiveThread(std::function<void(uint64_t, int32_t, con
     if (thread_is_running_) {
         LOG_INFO("[Conn-{}] Receive thread already running, can be reused", id_);
         return;
+    }
+
+    if (recv_thread_.joinable()) {
+        recv_thread_.join();
     }
 
     response_callback_ = callback; // 绑定回调，连接层只负责收字节，收齐了就通过这个回调扔给 Channel 去处理业务。
@@ -324,8 +376,8 @@ void RpcConnection::ReceiveLoop() {
                 LOG_ERROR("[Conn-{}] Connection closed/error, waiting for retry...", id_);
                 // std::cerr << "[Conn-" << id_ << "] Connection closed/error, waiting for retry..." << std::endl;
                 Close();
+                FailInflightRequests("Connection closed");
                 // 简单重试等待，防止 CPU 空转
-                std::this_thread::sleep_for(std::chrono::seconds(1)); 
             }
             break;
         }
@@ -335,6 +387,7 @@ void RpcConnection::ReceiveLoop() {
             uint64_t request_id;
             int32_t error_code;
             std::string error_msg, response_data;
+            RPC::MessageType message_type = RPC::MESSAGE_TYPE_UNKNOWN;
             bool parse_success = false;
 
             // 如果 TryParseResponse 内部使用了 throw（如旧代码逻辑），这里会捕获异常
@@ -342,7 +395,7 @@ void RpcConnection::ReceiveLoop() {
                 // 加锁读取 buffer
                 std::lock_guard<std::mutex> lock(recv_mutex_);
                 // 尝试解析一个完整包
-                parse_success = TryParseResponse(request_id, error_code, error_msg, response_data);
+                parse_success = TryParseResponse(request_id, error_code, error_msg, response_data, message_type);
             }
             catch (const std::exception& e) {
                 // 捕获标准异常 (如 bad_alloc, runtime_error)
@@ -350,6 +403,7 @@ void RpcConnection::ReceiveLoop() {
                 // std::cerr << "[Conn-" << id_ << "] CRITICAL EXCEPTION in parser: " << e.what() << std::endl;
                 // 发生异常通常意味着内存错乱或协议严重破坏，必须断开连接
                 Close(); 
+                FailInflightRequests("Parse response error");
                 return; // 直接退出线程，防止死循环或二次崩溃
             }
             catch (...) {
@@ -357,6 +411,7 @@ void RpcConnection::ReceiveLoop() {
                 LOG_ERROR("[Conn-{}] UNKNOWN EXCEPTION in parser.", id_);
                 // std::cerr << "[Conn-" << id_ << "] UNKNOWN EXCEPTION in parser." << std::endl;
                 Close();
+                FailInflightRequests("Unknown response parsing error");
                 return;
             }
 
@@ -365,13 +420,34 @@ void RpcConnection::ReceiveLoop() {
             }
 
             // 3. 触发回调 (通知 Channel 层)
+            MarkReceiveActivity();
+
+            if (message_type == RPC::HEARTBEAT_ACK) {
+                OnHeartbeatAck();
+                continue;
+            }
+
+            if (message_type != RPC::RESPONSE && message_type != RPC::ERROR) {
+                LOG_ERROR("[Conn-{}] Unexpected message type from server: {}", id_, message_type);
+                Close();
+                FailInflightRequests("Unexpected message type from server");
+                return;
+            }
+
+            RemoveInflightRequest(request_id);
             if (response_callback_) {
                 response_callback_(request_id, error_code, error_msg, response_data);
             }
         }
+
+        MaybeSendHeartbeat();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(thread_start_mutex_);
+        thread_is_running_ = false;
     }
     LOG_INFO("[Conn-{}] Receive thread exited.", id_);
-
 }
 
 /**
@@ -392,6 +468,7 @@ bool RpcConnection::ReadToBuffer() {
             // 1. 正常读取到数据
             std::lock_guard<std::mutex> lock(recv_mutex_);
             recv_buffer_.append(temp_buf, n);
+            last_receive_ms_.store(NowMs());
             return true;
         } 
         else if (n == 0) {
@@ -424,7 +501,8 @@ bool RpcConnection::ReadToBuffer() {
  * 负责从二进制流中切分出完整的 [Header + Body]。
  */
 bool RpcConnection::TryParseResponse(uint64_t& request_id, int32_t& error_code,
-                                     std::string& error_msg, std::string& response_data) {                                     
+                                     std::string& error_msg, std::string& response_data,
+                                     RPC::MessageType& message_type) {                                     
   // 注意：调用者已对 m_recv_mutex 加锁
 
   // ========== 阶段 1: Peek Varint32 (Header 长度) ==========
@@ -468,6 +546,7 @@ bool RpcConnection::TryParseResponse(uint64_t& request_id, int32_t& error_code,
   request_id = rpc_header.request_id();
   error_code = rpc_header.error_code();
   error_msg = rpc_header.error_msg();
+  message_type = rpc_header.message_type();
   uint32_t args_size = rpc_header.args_size();
 
   // 校验 args_size
@@ -496,6 +575,119 @@ bool RpcConnection::TryParseResponse(uint64_t& request_id, int32_t& error_code,
     //         << ", data size=" << response_data.size() << std::endl;
 
   return true;
+}
+
+bool RpcConnection::SendFrame(const RPC::RpcHeader& header, const std::string& body,
+                              google::protobuf::RpcController* controller,
+                              const char* operation_name) {
+    std::string header_str;
+    if (!header.SerializeToString(&header_str)) {
+        if (controller) {
+            controller->SetFailed("Serialize header failed");
+        }
+        return false;
+    }
+
+    std::string send_buffer;
+    {
+        google::protobuf::io::StringOutputStream string_output(&send_buffer);
+        google::protobuf::io::CodedOutputStream coded_output(&string_output);
+        coded_output.WriteVarint32(header_str.size());
+    }
+    send_buffer.append(header_str);
+    send_buffer.append(body);
+
+    size_t total_sent = 0;
+    while (total_sent < send_buffer.size()) {
+        ssize_t sent = send(fd_, send_buffer.data() + total_sent,
+                            send_buffer.size() - total_sent, 0);
+        if (sent <= 0) {
+            std::string error = std::string(operation_name) + " send failed: " + strerror(errno);
+            if (controller) {
+                controller->SetFailed(error);
+            }
+            failed_requests_++;
+            Close();
+            return false;
+        }
+        total_sent += sent;
+    }
+
+    MarkSendActivity();
+    return true;
+}
+
+void RpcConnection::MarkSendActivity() {
+    last_send_ms_.store(NowMs());
+}
+
+void RpcConnection::MarkReceiveActivity() {
+    last_receive_ms_.store(NowMs());
+}
+
+void RpcConnection::OnHeartbeatAck() {
+    waiting_for_heartbeat_ack_.store(false);
+    last_receive_ms_.store(NowMs());
+}
+
+void RpcConnection::MaybeSendHeartbeat() {
+    if (!config_.enable_heartbeat || fd_ == -1) {
+        return;
+    }
+
+    const int64_t now_ms = NowMs();
+    const int64_t last_send_or_recv = std::max(last_send_ms_.load(), last_receive_ms_.load());
+
+    if (waiting_for_heartbeat_ack_.load()) {
+        if (now_ms - last_receive_ms_.load() > config_.heartbeat_timeout_ms &&
+            now_ms - last_heartbeat_sent_ms_.load() > config_.heartbeat_timeout_ms) {
+            LOG_ERROR("[Conn-{}] Heartbeat timeout, closing connection", id_);
+            Close();
+            waiting_for_heartbeat_ack_.store(false);
+            FailInflightRequests("Heartbeat timeout");
+        }
+        return;
+    }
+
+    if (now_ms - last_send_or_recv < config_.heartbeat_interval_ms) {
+        return;
+    }
+
+    if (!SendHeartbeat()) {
+        LOG_ERROR("[Conn-{}] Failed to send heartbeat", id_);
+    }
+}
+
+void RpcConnection::TrackInflightRequest(uint64_t request_id) {
+    std::lock_guard<std::mutex> lock(inflight_mutex_);
+    inflight_requests_.insert(request_id);
+}
+
+void RpcConnection::RemoveInflightRequest(uint64_t request_id) {
+    std::lock_guard<std::mutex> lock(inflight_mutex_);
+    inflight_requests_.erase(request_id);
+}
+
+void RpcConnection::FailInflightRequests(const std::string& error_msg) {
+    std::vector<uint64_t> request_ids;
+    {
+        std::lock_guard<std::mutex> lock(inflight_mutex_);
+        request_ids.assign(inflight_requests_.begin(), inflight_requests_.end());
+        inflight_requests_.clear();
+    }
+
+    if (!response_callback_) {
+        return;
+    }
+
+    for (uint64_t request_id : request_ids) {
+        response_callback_(request_id, -1, error_msg, "");
+    }
+}
+
+int64_t RpcConnection::NowMs() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 // ============================================================================
@@ -574,19 +766,24 @@ MprpcChannel::MprpcChannel(const std::string& ip, uint16_t port,
                            const RpcClientConfig& config)
     : ip_(ip), port_(port), config_(config) {
 
+    if (config_.client_id.empty()) {
+        config_.client_id = GenerateFallbackClientId();
+        LOG_WARN("[MprpcChannel] client_id not provided, fallback to {}", config_.client_id);
+    }
+
     // 1. 如果构造时指定了 IP，则初始化直连池
     if (!ip_.empty() && port_ != 0) {
-        conn_pool_ = std::make_unique<ConnectionPool>(ip, port, config);
+        conn_pool_ = std::make_unique<ConnectionPool>(ip, port, config_);
         conn_pool_->Init();
         
-        // 这里使用简单的 Hack 方式，循环调用 GetConnection 来覆盖所有连接。
-        // 给每个连接注册同一个回调函数：MprpcChannel::OnResponseReceived
-        for(int i = 0; i < config.connection_pool_size * 2; ++i) { 
+        for (int i = 0; i < config_.connection_pool_size; ++i) {
             auto conn = conn_pool_->GetConnection();
-            // 启动接受线程
-            conn->StartReceiveThread([this](uint64_t req_id, int32_t err, const std::string& msg, const std::string& data) {
-                this->OnResponseReceived(req_id, err, msg, data);
-            });
+            if (conn) {
+                conn->StartReceiveThread([](uint64_t req_id, int32_t err, const std::string& msg,
+                                            const std::string& data) {
+                    MprpcChannel::OnResponseReceived(req_id, err, msg, data);
+                });
+            }
         }
     }
 
@@ -640,8 +837,7 @@ void MprpcChannel::Shutdown() {
     // 所以这里主要处理属于自己的线程资源。
     
     if (conn_pool_) {
-        // 显式停止，虽然 unique_ptr 析构也会做，但这样更安全
-        // conn_pool_.reset(); // 或者什么都不做，依赖析构
+        conn_pool_.reset();
     }
     LOG_INFO("[MprpcChannel] MprpcChannel Shutdown 完毕");
 }
@@ -737,27 +933,15 @@ void MprpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
         conn = conn_pool_->GetConnection();
     } else {
         // 否则使用动态全局池
-        std::string host_key = target_ip + ":" + std::to_string(target_port); // 能够提供该服务的实例IP:Port
+        std::string host_key = target_ip + ":" + std::to_string(target_port) + "|" + config_.client_id;
         std::shared_ptr<ConnectionPool> pool;
         
         {
             std::lock_guard<std::mutex> lock(g_pools_mutex);
             auto it = g_conn_pools.find(host_key);  // 全局名册 (`g_conn_pools`)是否已经有该 IP 的连接池
             if (it == g_conn_pools.end()) {
-                // 首次连接该 IP，创建新池
                 pool = std::make_shared<ConnectionPool>(target_ip, target_port, config_);
                 pool->Init();
-                // 必须为新池中的连接绑定当前 Channel 的回调
-                // 注意：这里会有个小问题，如果多个 Channel 实例共用一个全局池，回调给谁？
-                // 这里的 Hack 方案是：每个连接接收到数据时，根据 request_id 在 Global Map 中找 Context。
-                // 但目前的 PendingMap 是成员变量。
-                // ----------------------------------------------------
-                // 修正：为了支持 ZK 动态连接且不破坏现有的成员变量结构，
-                // 我们在这里暂时只支持 "每个目标 IP 创建一个临时连接" 或 "为该 Channel 独享该池"。
-                // 考虑到高并发代码的复杂性，这里我们采用【从池中取出连接，并动态绑定回调】的策略
-                // ----------------------------------------------------
-                
-                // 为了简化，这里我们暂时只对新池做初始化，回调绑定在 GetConnection 后做
                 g_conn_pools[host_key] = pool;
             } else {
                 pool = it->second;
@@ -775,7 +959,12 @@ void MprpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     if (!conn || !conn->IsConnected()) {
         // 简单的重连尝试
         if (conn && !conn->IsConnected()) {
-            conn->Connect();
+            if (conn->Connect()) {
+                conn->StartReceiveThread([](uint64_t req_id, int32_t err, const std::string& msg,
+                                            const std::string& data) {
+                    MprpcChannel::OnResponseReceived(req_id, err, msg, data);
+                });
+            }
         }
         if (!conn || !conn->IsConnected()) {
             controller->SetFailed("No connection available");
@@ -788,6 +977,8 @@ void MprpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
             return;
         }
     }
+
+    ctx->connection = conn;
 
     // 发送请求（非阻塞/独立锁）
     ctx->send_time = std::chrono::steady_clock::now();
@@ -851,6 +1042,10 @@ void MprpcChannel::OnResponseReceived(uint64_t request_id, int32_t error_code,
         }
     }
 
+    if (auto conn = ctx->connection.lock()) {
+        conn->RemoveInflightRequest(request_id);
+    }
+
     // 唤醒同步等待的线程，无论CallMethod中选择同步等待还是异步回调都会执行唤醒，只不过异步回调时会空响而已
     {
         std::lock_guard<std::mutex> lock(ctx->mutex);
@@ -912,5 +1107,7 @@ void MprpcChannel::CleanupTimeoutRequests() {
 }
 
 void MprpcChannel::PrintStats() const {
-    conn_pool_->PrintStats();
+    if (conn_pool_) {
+        conn_pool_->PrintStats();
+    }
 }

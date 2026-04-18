@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rpcheader.pb.h"
+
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/service.h>
 #include <muduo/base/Logging.h>
@@ -14,6 +16,8 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 // RPC 协议层面的错误码定义
 // 用于在 SendErrorResponse 中告知客户端具体的失败原因
@@ -51,10 +55,36 @@ class RpcProvider {
     // 空闲连接超时时间 (默认 300秒)
     // 配合 CheckIdleConnections 清理死连接
     int idle_timeout_seconds = 300;  
+
+    int heartbeat_timeout_ms = 3000;      // 心跳超时时间
+    int heartbeat_check_interval_ms = 1000; // 心跳检查频率
     
     bool enable_metrics = true; // 是否开启指标统计
     // std::string log_level = "INFO";
   };
+
+  enum class ClientEventType {
+    ONLINE,
+    OFFLINE,
+  };
+
+  enum class ClientOfflineReason {
+    GRACEFUL_CLOSE,
+    SOCKET_ERROR,
+    HEARTBEAT_TIMEOUT,
+    SERVER_EVICTED,
+  };
+
+  struct ClientLifecycleEvent {
+    std::string client_id;
+    std::string peer_addr;
+    ClientEventType event_type;
+    ClientOfflineReason reason;
+    size_t active_connection_count = 0;
+    muduo::Timestamp timestamp;
+  };
+
+  using ClientLifecycleCallback = std::function<void(const ClientLifecycleEvent&)>;
 
   // 构造函数：传入配置，初始化 Environment
   explicit RpcProvider(const Config& config);
@@ -79,6 +109,8 @@ class RpcProvider {
    * 这是一个阻塞调用，会启动 EventLoop 并开始监听
    */
   void Run();
+
+  void RegisterClientLifecycleCallback(ClientLifecycleCallback callback);
 
   /**
    * @brief 优雅关闭
@@ -110,7 +142,24 @@ class RpcProvider {
   struct ConnectionContext {
     muduo::net::TcpConnectionPtr conn;
     muduo::Timestamp last_active_time;   // 最后一次收发数据的时间 (用于心跳超时)
+    muduo::Timestamp last_heartbeat_time;
     std::atomic<int> pending_requests{0}; // 当前正在处理的请求数
+    std::string client_id;
+    std::string peer_addr;
+    bool heartbeat_enabled = false;
+    ClientOfflineReason close_reason = ClientOfflineReason::GRACEFUL_CLOSE;
+  };
+
+  struct ParsedRpcMessage {
+    uint32_t header_size = 0;
+    std::string service_name;
+    std::string method_name;
+    std::string args_str;
+    uint64_t request_id = 0;
+    RPC::MessageType message_type = RPC::MESSAGE_TYPE_UNKNOWN;
+    std::string client_id;
+    int32_t error_code = 0;
+    std::string error_msg;
   };
 
   // 配置信息
@@ -132,6 +181,10 @@ class RpcProvider {
   // 用于心跳检测和连接限制
   mutable std::mutex conn_mutex_;
   std::unordered_map<std::string, std::shared_ptr<ConnectionContext>> connections_;
+  std::unordered_map<std::string, std::unordered_set<std::string>> client_sessions_;
+
+  mutable std::mutex lifecycle_mutex_;
+  std::vector<ClientLifecycleCallback> lifecycle_callbacks_;
 
   // 监控指标
   Metrics metrics_;
@@ -165,11 +218,7 @@ class RpcProvider {
    * @return true 成功解析出一个完整包
    */
   bool TryParseMessage(muduo::net::Buffer* buffer,
-                       uint32_t& header_size,
-                       std::string& service_name,
-                       std::string& method_name,
-                       std::string& args_str,
-                       uint64_t& request_id);
+                       ParsedRpcMessage& message);
 
   /**
    * @brief 执行 RPC 业务逻辑
@@ -183,7 +232,8 @@ class RpcProvider {
                         const std::string& service_name,
                         const std::string& method_name,
                         const std::string& args_str,
-                        uint64_t request_id);
+                        uint64_t request_id,
+                        const std::string& client_id);
 
   // ================= 响应发送区 =================
 
@@ -191,12 +241,20 @@ class RpcProvider {
   // 会自动序列化 response 并添加长度头
   void SendRpcResponse(muduo::net::TcpConnectionPtr conn,
                        google::protobuf::Message* response,
-                       uint64_t request_id);
+                       uint64_t request_id,
+                       const std::string& client_id);
   
   // 发送错误响应 (如解析失败、服务未找到)
   void SendErrorResponse(const muduo::net::TcpConnectionPtr& conn,
+                         uint64_t request_id,
+                         const std::string& client_id,
                          int error_code,
                          const std::string& error_msg);
+  void SendHeartbeatAck(const muduo::net::TcpConnectionPtr& conn,
+                        const std::string& client_id);
+  void SendFrame(const muduo::net::TcpConnectionPtr& conn,
+                 const RPC::RpcHeader& header,
+                 const std::string& body);
 
   // ================= 辅助功能区 =================
 
@@ -205,6 +263,17 @@ class RpcProvider {
   
   // 从管理表中移除连接
   void RemoveConnection(const std::string& conn_name);
+  bool BindClientToConnection(const std::string& conn_name,
+                              const std::shared_ptr<ConnectionContext>& ctx,
+                              const std::string& client_id,
+                              muduo::Timestamp timestamp);
+  void EmitClientLifecycleEvent(const std::string& client_id,
+                                const std::string& peer_addr,
+                                ClientEventType event_type,
+                                ClientOfflineReason reason,
+                                size_t active_connection_count,
+                                muduo::Timestamp timestamp);
+  static const char* OfflineReasonToString(ClientOfflineReason reason);
 
 protected:
   // 获取本机非回环 IP 地址

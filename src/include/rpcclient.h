@@ -1,6 +1,8 @@
 #ifndef RPCCLIENT_H
 #define RPCCLIENT_H
 
+#include "rpcheader.pb.h"
+
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/service.h>
@@ -17,6 +19,7 @@
 #include <string>
 #include <functional>
 #include <chrono>
+#include <unordered_set>
 #include "rpccontroller.h"
 #include "zookeeperutil.h"   
 
@@ -28,14 +31,20 @@ struct RpcClientConfig {
   int rpc_timeout_ms = 5000;          // RPC 调用超时 (毫秒)
   int max_retry_times = 3;            // 最大重试次数
   int max_message_size = 10 * 1024 * 1024;  // 最大消息 10MB
+  std::string client_id;              // 稳定客户端标识
 
-    // 连接池配置
+  // 连接池配置
   int connection_pool_size = 4;        // 连接池大小（建议 = CPU 核数）
   int io_thread_pool_size = 2;         // IO 线程数（接收线程）
 
   bool enable_auto_reconnect = true;  // 是否自动重连
-  bool enable_heartbeat = false;      // 是否启用心跳 (预留)
+  bool enable_heartbeat = true;       // 是否启用应用层心跳
+  int heartbeat_interval_ms = 1000;   // 心跳发送间隔
+  int heartbeat_timeout_ms = 3000;    // 心跳超时阈值
 };
+
+class RpcConnection;
+class ConnectionPool;
 
 // ============================================================================
 // 请求上下文
@@ -52,13 +61,8 @@ struct PendingRpcContext {
     
     std::chrono::steady_clock::time_point start_time;
     std::chrono::steady_clock::time_point send_time;
+    std::weak_ptr<RpcConnection> connection;
 };
-
-// ============================================================================
-// 类的前置声明
-// ============================================================================
-class RpcConnection;
-class ConnectionPool;
 
 // ============================================================================
 // 单个 TCP 连接封装
@@ -81,6 +85,7 @@ public:
                      const std::string& method_name,
                      const google::protobuf::Message* request,
                      google::protobuf::RpcController* controller);
+    bool SendHeartbeat();
 
     // 启动/停止接收线程
     void StartReceiveThread(
@@ -89,6 +94,7 @@ public:
 
     uint64_t GetTotalRequests() const { return total_requests_; }
     uint64_t GetFailedRequests() const { return failed_requests_; }
+    void RemoveInflightRequest(uint64_t request_id);
 
 private:
     int id_;
@@ -113,7 +119,25 @@ private:
     void ReceiveLoop();
     bool ReadToBuffer();
     bool TryParseResponse(uint64_t& request_id, int32_t& error_code,
-                          std::string& error_msg, std::string& response_data);
+                          std::string& error_msg, std::string& response_data,
+                          RPC::MessageType& message_type);
+    bool SendFrame(const RPC::RpcHeader& header, const std::string& body,
+                   google::protobuf::RpcController* controller,
+                   const char* operation_name);
+    void MarkSendActivity();
+    void MarkReceiveActivity();
+    void OnHeartbeatAck();
+    void MaybeSendHeartbeat();
+    void TrackInflightRequest(uint64_t request_id);
+    void FailInflightRequests(const std::string& error_msg);
+    static int64_t NowMs();
+
+    std::atomic<int64_t> last_send_ms_{0};
+    std::atomic<int64_t> last_receive_ms_{0};
+    std::atomic<int64_t> last_heartbeat_sent_ms_{0};
+    std::atomic<bool> waiting_for_heartbeat_ack_{false};
+    std::mutex inflight_mutex_;
+    std::unordered_set<uint64_t> inflight_requests_;
 };
 
 // ============================================================================

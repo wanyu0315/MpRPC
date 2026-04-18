@@ -9,6 +9,7 @@
 #include <cstring>
 #include <sstream>
 #include <algorithm> // for std::min
+#include <stdexcept>
 
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
@@ -94,6 +95,11 @@ RpcProvider::RpcProvider(const Config& config)
              config_.max_message_size);
 }
 
+void RpcProvider::RegisterClientLifecycleCallback(ClientLifecycleCallback callback) {
+  std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+  lifecycle_callbacks_.push_back(std::move(callback));
+}
+
 RpcProvider::~RpcProvider() {
   // 取消注册 Hook（防止野指针）
   if (shutdown_hook_id_ != -1) { // 意味着 Hook 成功注册了。
@@ -119,6 +125,14 @@ bool RpcProvider::ValidateConfig() const {
   // 限制最大包大小（例如1GB），防止恶意的大包攻击导致 OOM (内存耗尽)
   if (config_.max_message_size <= 0 || config_.max_message_size > 1024*1024*1024) {
     LOG_ERROR("Invalid max_message_size: {}", config_.max_message_size);
+    return false;
+  }
+  if (config_.heartbeat_timeout_ms <= 0) {
+    LOG_ERROR("Invalid heartbeat_timeout_ms: {}", config_.heartbeat_timeout_ms);
+    return false;
+  }
+  if (config_.heartbeat_check_interval_ms <= 0) {
+    LOG_ERROR("Invalid heartbeat_check_interval_ms: {}", config_.heartbeat_check_interval_ms);
     return false;
   }
   return true;
@@ -171,14 +185,23 @@ void RpcProvider::Shutdown() {
   // 第三步：断开所有连接
   // -----------------------------------------------------------------------
   {
-    std::lock_guard<std::mutex> lock(conn_mutex_);
-    for (auto& pair : connections_) {
-      // 主动断开所有现有连接
-      if (pair.second && pair.second->conn) {
-        pair.second->conn->shutdown();
+    std::vector<std::pair<std::string, muduo::net::TcpConnectionPtr>> evicted_connections;
+    {
+      std::lock_guard<std::mutex> lock(conn_mutex_);
+      for (auto& pair : connections_) {
+        if (pair.second) {
+          pair.second->close_reason = ClientOfflineReason::SERVER_EVICTED;
+          if (pair.second->conn) {
+            evicted_connections.emplace_back(pair.first, pair.second->conn);
+          }
+        }
       }
     }
-    connections_.clear();
+
+    for (const auto& pair : evicted_connections) {
+      pair.second->shutdown();
+      RemoveConnection(pair.first);
+    }
   }
 
   // 最后退出 EventLoop
@@ -270,8 +293,9 @@ void RpcProvider::Run() {
   server_->setThreadNum(config_.thread_num);
 
   // 启动空闲连接检查定时器：每 30 秒执行一次 CheckIdleConnections，此函数实现清理长时间不活跃的“僵尸连接”
-  if (config_.idle_timeout_seconds > 0) {
-    event_loop_.runEvery(30.0, [this]() { CheckIdleConnections(); });
+  if (config_.idle_timeout_seconds > 0 || config_.heartbeat_timeout_ms > 0) {
+    const double interval_seconds = std::max(0.1, config_.heartbeat_check_interval_ms / 1000.0);
+    event_loop_.runEvery(interval_seconds, [this]() { CheckIdleConnections(); });
   }
 
   LOG_INFO("RpcProvider starting at {}:{} with {} threads", ip, config_.port, config_.thread_num);
@@ -337,6 +361,8 @@ void RpcProvider::OnConnection(const muduo::net::TcpConnectionPtr& conn) {
     auto ctx = std::make_shared<ConnectionContext>();
     ctx->conn = conn;
     ctx->last_active_time = muduo::Timestamp::now(); // 初始化时间戳
+    ctx->last_heartbeat_time = ctx->last_active_time;
+    ctx->peer_addr = conn->peerAddress().toIpPort();
 
     {
       std::lock_guard<std::mutex> lock(conn_mutex_);
@@ -348,7 +374,6 @@ void RpcProvider::OnConnection(const muduo::net::TcpConnectionPtr& conn) {
   } else {
     // 连接断开，清理上下文
     RemoveConnection(conn->name());
-    metrics_.active_connections--;
     LOG_INFO("Connection closed: {} , active: {}", conn->peerAddress().toIpPort(), metrics_.active_connections);
   }
 }
@@ -357,28 +382,39 @@ void RpcProvider::OnConnection(const muduo::net::TcpConnectionPtr& conn) {
 void RpcProvider::OnMessage(const muduo::net::TcpConnectionPtr& conn,
                             muduo::net::Buffer* buffer,
                             muduo::Timestamp timestamp) {
-  // 1. 更新活跃时间（用于心跳保活）
+  std::shared_ptr<ConnectionContext> ctx;
   {
     std::lock_guard<std::mutex> lock(conn_mutex_);
     auto it = connections_.find(conn->name());
     if (it != connections_.end()) {
-      it->second->last_active_time = timestamp;
-      it->second->pending_requests++;
+      ctx = it->second;
     }
+  }
+  if (!ctx) {
+    LOG_WARN("Connection context missing for {}", conn->name());
+    conn->shutdown();
+    return;
   }
 
   // 2. 循环解析：处理 Buffer 中可能存在的多个包 (TCP 粘包)
   // 如果收到半个包，循环会因 TryParseMessage 返回 false 而终止
   while (true) {
-    uint32_t header_size = 0;
-    uint64_t request_id = 0;  // <--- 定义请求ID变量
-    std::string service_name, method_name, args_str;
+    ParsedRpcMessage message;
 
     // 尝试解析一个完整的消息
     // 返回 true 表示成功解析了一个包，buffer 指针已后移
     // 返回 false 表示数据不够（半包），buffer 指针未动，等待下次数据到来
-    bool parsed = TryParseMessage(buffer, header_size, 
-                                  service_name, method_name, args_str, request_id);
+    bool parsed = false;
+    try {
+      parsed = TryParseMessage(buffer, message);
+    } catch (const std::exception& e) {
+      LOG_ERROR("Exception parsing RPC message from {}: {}", conn->peerAddress().toIpPort(), e.what());
+      ctx->close_reason = ClientOfflineReason::SOCKET_ERROR;
+      SendErrorResponse(conn, 0, ctx->client_id, RPC_PARSE_ERROR, e.what());
+      metrics_.failed_requests++;
+      conn->shutdown();
+      break;
+    }
     
     if (!parsed) {
       // 半包：数据不够，退出循环，等待 TCP 继续传输
@@ -389,27 +425,59 @@ void RpcProvider::OnMessage(const muduo::net::TcpConnectionPtr& conn,
       break; 
     }
 
-    // 3. 完整包解析成功，开始业务处理
-    metrics_.total_requests++;
-
-    // 正在处理的请求计数 +1
-    metrics_.pending_requests++;
-    
-    try {
-      HandleRpcRequest(conn, service_name, method_name, args_str, request_id);
-    } catch (const std::exception& e) {
-      LOG_ERROR("Exception handling RPC request: {}", e.what());
-      SendErrorResponse(conn, RPC_INTERNAL_ERROR, e.what());
-      metrics_.failed_requests++;
+    {
+      std::lock_guard<std::mutex> lock(conn_mutex_);
+      auto it = connections_.find(conn->name());
+      if (it == connections_.end()) {
+        LOG_WARN("Connection {} disappeared during message handling", conn->name());
+        conn->shutdown();
+        break;
+      }
+      ctx = it->second;
+      ctx->last_active_time = timestamp;
+      ctx->heartbeat_enabled = ctx->heartbeat_enabled || !message.client_id.empty();
+      if (message.message_type == RPC::HEARTBEAT) {
+        ctx->last_heartbeat_time = timestamp;
+      }
     }
-  }
 
-  // 请求处理完成计数
-  {
-    std::lock_guard<std::mutex> lock(conn_mutex_);
-    auto it = connections_.find(conn->name());
-    if (it != connections_.end()) {
-      it->second->pending_requests--;
+    if (!message.client_id.empty() &&
+        !BindClientToConnection(conn->name(), ctx, message.client_id, timestamp)) {
+      ctx->close_reason = ClientOfflineReason::SOCKET_ERROR;
+      SendErrorResponse(conn, message.request_id, message.client_id, RPC_INVALID_REQUEST,
+                        "client_id mismatch on existing connection");
+      metrics_.failed_requests++;
+      conn->shutdown();
+      break;
+    }
+
+    switch (message.message_type) {
+      case RPC::REQUEST: {
+        metrics_.total_requests++;
+        metrics_.pending_requests++;
+        ctx->pending_requests++;
+        try {
+          HandleRpcRequest(conn, message.service_name, message.method_name, message.args_str,
+                           message.request_id, message.client_id);
+        } catch (const std::exception& e) {
+          LOG_ERROR("Exception handling RPC request: {}", e.what());
+          SendErrorResponse(conn, message.request_id, message.client_id, RPC_INTERNAL_ERROR, e.what());
+          metrics_.failed_requests++;
+        }
+        break;
+      }
+      case RPC::HEARTBEAT:
+        SendHeartbeatAck(conn, message.client_id);
+        break;
+      default:
+        LOG_WARN("Unexpected client message type {} from {}", message.message_type,
+                 conn->peerAddress().toIpPort());
+        ctx->close_reason = ClientOfflineReason::SOCKET_ERROR;
+        SendErrorResponse(conn, message.request_id, message.client_id, RPC_INVALID_REQUEST,
+                          "Unexpected message type from client");
+        metrics_.failed_requests++;
+        conn->shutdown();
+        return;
     }
   }
 }
@@ -417,24 +485,20 @@ void RpcProvider::OnMessage(const muduo::net::TcpConnectionPtr& conn,
 // 协议解析器：状态机模式（改进版：全 Peek 策略）
 // 协议格式：[Varint32: header_size] + [RpcHeader] + [Args]
 bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
-                                  uint32_t& header_size,
-                                  std::string& service_name,
-                                  std::string& method_name,
-                                  std::string& args_str,
-                                  uint64_t& request_id) {
+                                  ParsedRpcMessage& message) {
   // ==========================================================
   // 阶段 1: 偷看 (Peek) 头部长度
   // ==========================================================
   size_t varint_size = 0;
   // 这里使用辅助函数 peek，不移动 buffer 指针
-  if (!PeekVarint32(buffer, header_size, varint_size)) {
+  if (!PeekVarint32(buffer, message.header_size, varint_size)) {
     // 数据太少，连长度头都没收齐，等待下次
     return false;
   }
 
   // 校验 header 长度合法性
-  if (header_size == 0 || header_size > config_.max_message_size) {
-    LOG_ERROR("Invalid header size: {}", header_size);
+  if (message.header_size == 0 || message.header_size > config_.max_message_size) {
+    LOG_ERROR("Invalid header size: {}", message.header_size);
     // 这种情况下，数据已经损坏，必须丢弃或断开。
     // 为了防止死循环，我们 retrieve 掉这个坏的 varint，并抛出异常让外层断开连接
     buffer->retrieve(varint_size); 
@@ -446,7 +510,7 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
   // ==========================================================
   
   // 计算读取 Header 所需的总字节数 (长度头 + Header体)
-  size_t total_header_len = varint_size + header_size;
+  size_t total_header_len = varint_size + message.header_size;
   
   // 如果 Buffer 里的数据还不够 Header 的长度，直接返回，什么都不动
   if (buffer->readableBytes() < total_header_len) {
@@ -458,7 +522,7 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
   const char* header_start = buffer->peek() + varint_size;
   
   // 使用收到的二进制数据流拷贝构造临时的 string ，用于反序列化
-  std::string rpc_header_str(header_start, header_size);
+  std::string rpc_header_str(header_start, message.header_size);
   
   RPC::RpcHeader rpc_header;
   if (!rpc_header.ParseFromString(rpc_header_str)) {
@@ -469,10 +533,14 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
   }
 
   // ... 解析 Header ...
-  service_name = rpc_header.service_name();
-  method_name = rpc_header.method_name();
+  message.service_name = rpc_header.service_name();
+  message.method_name = rpc_header.method_name();
   uint32_t args_size = rpc_header.args_size();
-  request_id = rpc_header.request_id(); // <--- 提取请求ID
+  message.request_id = rpc_header.request_id();
+  message.message_type = rpc_header.message_type();
+  message.client_id = rpc_header.client_id();
+  message.error_code = rpc_header.error_code();
+  message.error_msg = rpc_header.error_msg();
 
   // 校验 args 长度
   if (args_size > config_.max_message_size) {
@@ -487,7 +555,7 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
   // ==========================================================
   
   // 整个包的总长度 = 长度头(varint) + Header数据 + Args数据
-  size_t total_package_len = varint_size + header_size + args_size;
+  size_t total_package_len = varint_size + message.header_size + args_size;
 
   // 关键判断：只有当 Buffer 数据 >= 整个包长度时，才开始消费
   if (buffer->readableBytes() < total_package_len) {
@@ -501,13 +569,14 @@ bool RpcProvider::TryParseMessage(muduo::net::Buffer* buffer,
   // ==========================================================
   
   // 1. 消费掉 [长度头 + Header]
-  buffer->retrieve(varint_size + header_size);
+  buffer->retrieve(varint_size + message.header_size);
   
   // 2. 消费并读取 [Args]
   // 此时 Buffer 的 readerIndex 已经指向了 Args 的开头
-  args_str = buffer->retrieveAsString(args_size);
+  message.args_str = buffer->retrieveAsString(args_size);
 
-  LOG_DEBUG("Parsed complete message: {} . {}, args size: {}", service_name, method_name, args_size);
+  LOG_DEBUG("Parsed complete message: {} . {}, type={}, args size: {}",
+            message.service_name, message.method_name, message.message_type, args_size);
 
   return true;
 }
@@ -517,7 +586,8 @@ void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
                                    const std::string& service_name,
                                    const std::string& method_name,
                                    const std::string& args_str,
-                                   uint64_t request_id) {
+                                   uint64_t request_id,
+                                   const std::string& client_id) {
   // 1. 查找服务和方法
   google::protobuf::Service* service = nullptr;
   const google::protobuf::MethodDescriptor* method = nullptr;
@@ -528,14 +598,16 @@ void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
     auto service_it = service_map_.find(service_name);
     if (service_it == service_map_.end()) {
       LOG_WARN("Service not found: {}", service_name);
-      SendErrorResponse(conn, RPC_SERVICE_NOT_FOUND, "Service not found: " + service_name);
+      SendErrorResponse(conn, request_id, client_id, RPC_SERVICE_NOT_FOUND,
+                        "Service not found: " + service_name);
       return;
     }
 
     auto method_it = service_it->second.method_map.find(method_name);
     if (method_it == service_it->second.method_map.end()) {
       LOG_WARN("Method not found: {} . {}", service_name, method_name);
-      SendErrorResponse(conn, RPC_METHOD_NOT_FOUND, "Method not found: " + method_name);
+      SendErrorResponse(conn, request_id, client_id, RPC_METHOD_NOT_FOUND,
+                        "Method not found: " + method_name);
       return;
     }
 
@@ -552,7 +624,8 @@ void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
   // 3. 反序列化请求参数
   if (!request->ParseFromString(args_str)) {
     LOG_ERROR("Failed to parse request arguments");
-    SendErrorResponse(conn, RPC_INVALID_REQUEST, "Failed to parse request arguments");
+    SendErrorResponse(conn, request_id, client_id, RPC_INVALID_REQUEST,
+                      "Failed to parse request arguments");
     return;
   }
 
@@ -563,8 +636,8 @@ void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
   //  绑定回调闭包 (Closure)
   // 相当于构造一个回调函数：当业务做完后，请调用 this->SendRpcResponse
   // 利用 Lambda 捕获 this, conn, response_ptr, request_id，这样无论有多少个参数都能传进去
-  google::protobuf::Closure* done = new RpcClosure([this, conn, response_ptr, request_id]() {
-        this->SendRpcResponse(conn, response_ptr, request_id);
+  google::protobuf::Closure* done = new RpcClosure([this, conn, response_ptr, request_id, client_id]() {
+        this->SendRpcResponse(conn, response_ptr, request_id, client_id);
     });
   // google::protobuf::Closure* done = google::protobuf::NewCallback(
   //     this, &RpcProvider::SendRpcResponse, conn, response_ptr, request_id);
@@ -580,14 +653,16 @@ void RpcProvider::HandleRpcRequest(const muduo::net::TcpConnectionPtr& conn,
 // 发送响应：添加长度头
 void RpcProvider::SendRpcResponse(muduo::net::TcpConnectionPtr conn,
                                   google::protobuf::Message* response,
-                                  uint64_t request_id) {
+                                  uint64_t request_id,
+                                  const std::string& client_id) {
   // 接管 response 所有权，确保函数结束时自动 delete，防止内存泄漏
   std::unique_ptr<google::protobuf::Message> response_guard(response);
 
   std::string response_str;
   if (!response->SerializeToString(&response_str)) {
     LOG_ERROR("Failed to serialize response");
-    SendErrorResponse(conn, RPC_INTERNAL_ERROR, "Failed to serialize response");
+    SendErrorResponse(conn, request_id, client_id, RPC_INTERNAL_ERROR,
+                      "Failed to serialize response");
     return;
   }
 
@@ -596,51 +671,80 @@ void RpcProvider::SendRpcResponse(muduo::net::TcpConnectionPtr conn,
   rpc_header.set_request_id(request_id); // 客户端靠这个 ID 知道是哪个请求的响应
   rpc_header.set_error_code(0);
   rpc_header.set_args_size(response_str.size());
+  rpc_header.set_message_type(RPC::RESPONSE);
+  rpc_header.set_client_id(client_id);
 
-  std::string header_str;
-  rpc_header.SerializeToString(&header_str);
+  SendFrame(conn, rpc_header, response_str);
 
-  // 构造带长度头的帧：[Varint: header_len] + [Header] + [Body]
-  // 客户端收到后，也必须先读 varint 长度，再读 data
-  std::string frame;
+  metrics_.pending_requests--;
   {
-    google::protobuf::io::StringOutputStream string_output(&frame);
-    google::protobuf::io::CodedOutputStream coded_output(&string_output);
-    coded_output.WriteVarint32(header_str.size()); // 写入 header 长度
-    // CodedOutputStream 析构时会 flush 到 frame
+    std::lock_guard<std::mutex> lock(conn_mutex_);
+    auto it = connections_.find(conn->name());
+    if (it != connections_.end() && it->second->pending_requests > 0) {
+      it->second->pending_requests--;
+    }
   }
-  frame.append(header_str); // 追加 header 部分
-  frame.append(response_str); // 追加 body 部分
-
-  conn->send(frame); // 发送的是frame
-
-  metrics_.pending_requests--; // 响应发送完毕，正在处理的请求结束，计数 -1
-  LOG_DEBUG("Response sent: id={}, bytes={}", request_id, frame.size());
+  LOG_DEBUG("Response sent: id={}, body_bytes={}", request_id, response_str.size());
 }
 
 // 发送错误响应（用于协议错误或系统错误）
 void RpcProvider::SendErrorResponse(const muduo::net::TcpConnectionPtr& conn,
+                                    uint64_t request_id,
+                                    const std::string& client_id,
                                     int error_code,
                                     const std::string& error_msg) {
-  std::ostringstream oss;
-  // 简单的错误协议：ERROR:code:msg
-  oss << "ERROR:" << error_code << ":" << error_msg;
-  std::string error_str = oss.str();
-  
-  // 同样需要加帧头
+  RPC::RpcHeader rpc_header;
+  rpc_header.set_request_id(request_id);
+  rpc_header.set_error_code(error_code);
+  rpc_header.set_error_msg(error_msg);
+  rpc_header.set_args_size(0);
+  rpc_header.set_message_type(RPC::ERROR);
+  rpc_header.set_client_id(client_id);
+
+  SendFrame(conn, rpc_header, "");
+
+  // 错误响应发送完毕，请求结束，计数 -1
+  if (request_id != 0) {
+    metrics_.pending_requests--;
+    std::lock_guard<std::mutex> lock(conn_mutex_);
+    auto it = connections_.find(conn->name());
+    if (it != connections_.end() && it->second->pending_requests > 0) {
+      it->second->pending_requests--;
+    }
+  }
+  LOG_WARN("Error response: code={}, msg={}", error_code, error_msg);
+}
+
+void RpcProvider::SendHeartbeatAck(const muduo::net::TcpConnectionPtr& conn,
+                                   const std::string& client_id) {
+  RPC::RpcHeader rpc_header;
+  rpc_header.set_request_id(0);
+  rpc_header.set_error_code(0);
+  rpc_header.set_args_size(0);
+  rpc_header.set_message_type(RPC::HEARTBEAT_ACK);
+  rpc_header.set_client_id(client_id);
+  SendFrame(conn, rpc_header, "");
+}
+
+void RpcProvider::SendFrame(const muduo::net::TcpConnectionPtr& conn,
+                            const RPC::RpcHeader& header,
+                            const std::string& body) {
+  std::string header_str;
+  if (!header.SerializeToString(&header_str)) {
+    LOG_ERROR("Failed to serialize RPC frame header");
+    return;
+  }
+
   std::string frame;
   {
     google::protobuf::io::StringOutputStream string_output(&frame);
     google::protobuf::io::CodedOutputStream coded_output(&string_output);
-    coded_output.WriteVarint32(error_str.size());
+    coded_output.WriteVarint32(header_str.size());
   }
-  frame.append(error_str);
-  
-  conn->send(frame);
+  frame.append(header_str);
+  frame.append(body);
 
-  // 错误响应发送完毕，请求结束，计数 -1
-  metrics_.pending_requests--;
-  LOG_WARN("Error response: code={}, msg={}", error_code, error_msg);
+  conn->send(frame);
 }
 
 // 检查空闲连接
@@ -649,15 +753,23 @@ void RpcProvider::CheckIdleConnections() {
 
   auto now = muduo::Timestamp::now();
   std::vector<std::string> idle_conns;
+  std::vector<std::string> timed_out_conns;
 
   {
     std::lock_guard<std::mutex> lock(conn_mutex_);
     for (const auto& pair : connections_) {
+      double idle_seconds = muduo::timeDifference(now, pair.second->last_active_time);
+
+      if (pair.second->heartbeat_enabled &&
+          pair.second->pending_requests == 0 &&
+          idle_seconds * 1000.0 > config_.heartbeat_timeout_ms) {
+        pair.second->close_reason = ClientOfflineReason::HEARTBEAT_TIMEOUT;
+        timed_out_conns.push_back(pair.first);
+        continue;
+      }
+
       // 只有当前没有正在处理的请求时，才计算空闲时间
       if (pair.second->pending_requests == 0) {
-        double idle_seconds = muduo::timeDifference(
-            now, pair.second->last_active_time);
-        
         if (idle_seconds > config_.idle_timeout_seconds) {
           idle_conns.push_back(pair.first);
         }
@@ -666,20 +778,165 @@ void RpcProvider::CheckIdleConnections() {
   }
 
   // 执行断开操作
+  for (const auto& conn_name : timed_out_conns) {
+    muduo::net::TcpConnectionPtr conn;
+    std::string peer_addr;
+    std::string client_id;
+    {
+      std::lock_guard<std::mutex> lock(conn_mutex_);
+      auto it = connections_.find(conn_name);
+      if (it != connections_.end() && it->second->conn) {
+        conn = it->second->conn;
+        peer_addr = it->second->peer_addr;
+        client_id = it->second->client_id;
+      }
+    }
+    if (conn) {
+      LOG_WARN("Closing heartbeat-timed-out connection: {} client_id={}", peer_addr, client_id);
+      conn->shutdown();
+    }
+  }
+
   for (const auto& conn_name : idle_conns) {
-    std::lock_guard<std::mutex> lock(conn_mutex_);
-    auto it = connections_.find(conn_name);
-    if (it != connections_.end() && it->second->conn) {
-      LOG_INFO("Closing idle connection: {}",
-               it->second->conn->peerAddress().toIpPort());
-      it->second->conn->shutdown();
+    muduo::net::TcpConnectionPtr conn;
+    std::string peer_addr;
+    {
+      std::lock_guard<std::mutex> lock(conn_mutex_);
+      auto it = connections_.find(conn_name);
+      if (it != connections_.end() && it->second->conn) {
+        it->second->close_reason = ClientOfflineReason::SOCKET_ERROR;
+        conn = it->second->conn;
+        peer_addr = it->second->peer_addr;
+      }
+    }
+    if (conn) {
+      LOG_INFO("Closing idle connection: {}", peer_addr);
+      conn->shutdown();
     }
   }
 }
 
 void RpcProvider::RemoveConnection(const std::string& conn_name) {
-  std::lock_guard<std::mutex> lock(conn_mutex_);
-  connections_.erase(conn_name);
+  std::string client_id;
+  std::string peer_addr;
+  ClientOfflineReason reason = ClientOfflineReason::GRACEFUL_CLOSE;
+  size_t active_connection_count = 0;
+  bool emit_offline = false;
+
+  {
+    std::lock_guard<std::mutex> lock(conn_mutex_);
+    auto it = connections_.find(conn_name);
+    if (it == connections_.end()) {
+      return;
+    }
+
+    auto ctx = it->second;
+    client_id = ctx->client_id;
+    peer_addr = ctx->peer_addr;
+    reason = ctx->close_reason;
+
+    if (!client_id.empty()) {
+      auto session_it = client_sessions_.find(client_id);
+      if (session_it != client_sessions_.end()) {
+        session_it->second.erase(conn_name);
+        active_connection_count = session_it->second.size();
+        if (session_it->second.empty()) {
+          client_sessions_.erase(session_it);
+          emit_offline = true;
+        }
+      }
+    }
+
+    connections_.erase(it);
+    if (metrics_.active_connections > 0) {
+      metrics_.active_connections--;
+    }
+  }
+
+  if (emit_offline) {
+    EmitClientLifecycleEvent(client_id, peer_addr, ClientEventType::OFFLINE,
+                             reason, active_connection_count, muduo::Timestamp::now());
+  }
+}
+
+bool RpcProvider::BindClientToConnection(const std::string& conn_name,
+                                         const std::shared_ptr<ConnectionContext>& ctx,
+                                         const std::string& client_id,
+                                         muduo::Timestamp timestamp) {
+  if (client_id.empty()) {
+    return true;
+  }
+
+  bool emit_online = false;
+  size_t active_connection_count = 0;
+  std::string peer_addr = ctx->peer_addr;
+
+  {
+    std::lock_guard<std::mutex> lock(conn_mutex_);
+    if (!ctx->client_id.empty() && ctx->client_id != client_id) {
+      LOG_ERROR("Connection {} tried to switch client_id from {} to {}",
+                conn_name, ctx->client_id, client_id);
+      return false;
+    }
+
+    ctx->client_id = client_id;
+    ctx->heartbeat_enabled = true;
+    ctx->last_active_time = timestamp;
+
+    auto& session = client_sessions_[client_id];
+    const bool was_empty = session.empty();
+    session.insert(conn_name);
+    active_connection_count = session.size();
+    emit_online = was_empty;
+  }
+
+  if (emit_online) {
+    EmitClientLifecycleEvent(client_id, peer_addr, ClientEventType::ONLINE,
+                             ClientOfflineReason::GRACEFUL_CLOSE,
+                             active_connection_count, timestamp);
+  }
+  return true;
+}
+
+void RpcProvider::EmitClientLifecycleEvent(const std::string& client_id,
+                                           const std::string& peer_addr,
+                                           ClientEventType event_type,
+                                           ClientOfflineReason reason,
+                                           size_t active_connection_count,
+                                           muduo::Timestamp timestamp) {
+  ClientLifecycleEvent event;
+  event.client_id = client_id;
+  event.peer_addr = peer_addr;
+  event.event_type = event_type;
+  event.reason = reason;
+  event.active_connection_count = active_connection_count;
+  event.timestamp = timestamp;
+
+  std::vector<ClientLifecycleCallback> callbacks;
+  {
+    std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+    callbacks = lifecycle_callbacks_;
+  }
+
+  for (const auto& callback : callbacks) {
+    if (callback) {
+      callback(event);
+    }
+  }
+}
+
+const char* RpcProvider::OfflineReasonToString(ClientOfflineReason reason) {
+  switch (reason) {
+    case ClientOfflineReason::GRACEFUL_CLOSE:
+      return "GRACEFUL_CLOSE";
+    case ClientOfflineReason::SOCKET_ERROR:
+      return "SOCKET_ERROR";
+    case ClientOfflineReason::HEARTBEAT_TIMEOUT:
+      return "HEARTBEAT_TIMEOUT";
+    case ClientOfflineReason::SERVER_EVICTED:
+      return "SERVER_EVICTED";
+  }
+  return "UNKNOWN";
 }
 
 // 获取本机 IP（辅助函数）

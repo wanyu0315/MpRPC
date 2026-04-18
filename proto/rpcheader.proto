@@ -2,6 +2,16 @@ syntax = "proto3";
 
 package RPC;
 
+enum MessageType
+{
+    MESSAGE_TYPE_UNKNOWN = 0;
+    REQUEST = 1;
+    RESPONSE = 2;
+    HEARTBEAT = 3;
+    HEARTBEAT_ACK = 4;
+    ERROR = 5;
+}
+
 message RpcHeader
 {
     // 1. 基本路由信息 (改为 string 更符合语义)
@@ -20,6 +30,10 @@ message RpcHeader
     int32 error_code = 5; 
     string error_msg = 6;
 
-    // 5. (可选) 扩展元数据，用于鉴权、TraceID 等
-    // map<string, string> meta_data = 7;
+    // 5. 帧类型与客户端身份
+    MessageType message_type = 7;
+    string client_id = 8;
+
+    // 6. (可选) 扩展元数据，用于鉴权、TraceID 等
+    // map<string, string> meta_data = 9;
 }
