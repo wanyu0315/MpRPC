@@ -5,3 +5,5 @@
 /log_file/
 /lib/
 /bin/
+/test_integration/
+.codex
